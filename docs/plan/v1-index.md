@@ -21,7 +21,7 @@
 | M3 | OSC/SystemCmd | 上游 `SystemCommandSequenceTest.kt` 等价测试移植并全绿；矩阵标 done | `scripts\run_godot_tests.ps1 -One tests\addons\jediterm\test_system_command_sequence.gd` | done |
 | M4 | Terminal Model | `LinesStorageOperationsTest.kt`、`LimitedSizeLinesStorageTest.kt` 移植并全绿 | `scripts\run_godot_tests.ps1 -Suite jediterm` | done |
 | M5 | Text Buffer | `TerminalTextBufferTest.java` 移植并全绿 | `scripts\run_godot_tests.ps1 -Suite jediterm` | done |
-| M6 | Key Encoder | `TerminalKeyEncoderTest.kt` 移植并全绿 | `scripts\run_godot_tests.ps1 -Suite jediterm` | todo |
+| M6 | Key Encoder | `TerminalKeyEncoderTest.kt` 移植并全绿 | `scripts\run_godot_tests.ps1 -Suite jediterm` | done |
 | M7 | Sync Output | `SynchronizedOutputTest.kt` 移植并全绿 | `scripts\run_godot_tests.ps1 -Suite jediterm` | done |
 | M8 | Modes/Scroll/Select/Style | `ModesTest.java`、`ScrollingTest.java`、`SelectionTest.java`、`StyledTextTest.java`、`util/TerminalSelectionTest.java` 移植并全绿 | `scripts\run_godot_tests.ps1 -Suite jediterm` | todo |
 | M9 | Emulator + vttest | `EmulatorTest*`、`VtEmulatorTest.java` + `testData/vttest` 跑通 | `scripts\run_godot_tests.ps1 -Suite jediterm` | todo |
@@ -45,7 +45,7 @@
 | `com/jediterm/terminal/model/LinesStorageOperationsTest.kt` | P0 | `tests/addons/jediterm/test_lines_storage_operations.gd` | `addons/jediterm/terminal/model/cyclic_buffer_lines_storage.gd`; `addons/jediterm/terminal/model/terminal_line.gd`; `addons/jediterm/terminal/model/char_buffer.gd` | done | 2026-02-21: `scripts\\run_godot_tests.ps1 -One tests\\addons\\jediterm\\test_lines_storage_operations.gd` |
 | `com/jediterm/terminal/model/LimitedSizeLinesStorageTest.kt` | P1 | `tests/addons/jediterm/test_limited_size_lines_storage.gd` | `addons/jediterm/terminal/model/cyclic_buffer_lines_storage.gd` | done | 2026-02-21: `scripts\\run_godot_tests.ps1 -One tests\\addons\\jediterm\\test_limited_size_lines_storage.gd` |
 | `com/jediterm/TerminalTextBufferTest.java` | P0 | `tests/addons/jediterm/test_terminal_text_buffer.gd` | `addons/jediterm/terminal/model/terminal_text_buffer.gd`; `addons/jediterm/terminal/model/jedi_terminal.gd`; `addons/jediterm/terminal/model/style_state.gd`; `addons/jediterm/util/back_buffer_display.gd`; `addons/jediterm/terminal/text_style.gd` | done | 2026-02-21: `scripts\\run_godot_tests.ps1 -One tests\\addons\\jediterm\\test_terminal_text_buffer.gd` |
-| `com/jediterm/TerminalKeyEncoderTest.kt` | P1 | `tests/addons/jediterm/test_terminal_key_encoder.gd` | `addons/jediterm/terminal/terminal_key_encoder.gd`（待定） | todo |  |
+| `com/jediterm/TerminalKeyEncoderTest.kt` | P1 | `tests/addons/jediterm/test_terminal_key_encoder.gd` | `addons/jediterm/terminal/terminal_key_encoder.gd`; `addons/jediterm/core/input_event.gd`; `addons/jediterm/core/key_event.gd`; `addons/jediterm/core/platform.gd`; `addons/jediterm/core/ascii.gd` | done | 2026-02-21: `scripts\\run_godot_tests.ps1 -One tests\\addons\\jediterm\\test_terminal_key_encoder.gd` |
 | `com/jediterm/BufferResizeTest.kt` | P1 | `tests/addons/jediterm/test_buffer_resize.gd` | `addons/jediterm/terminal/jedi_terminal.gd`（待定） | todo |  |
 | `com/jediterm/EmulatorTest.java` | P0 | `tests/addons/jediterm/test_emulator.gd` | `addons/jediterm/terminal/emulator/jedi_emulator.gd`（待定） | todo |  |
 | `com/jediterm/VtEmulatorTest.java` | P0 | `tests/addons/jediterm/test_vt_emulator_vttest.gd` | `addons/jediterm/terminal/emulator/jedi_emulator.gd`（待定） | todo |  |
