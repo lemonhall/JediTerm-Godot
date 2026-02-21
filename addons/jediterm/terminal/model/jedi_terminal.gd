@@ -106,3 +106,8 @@ func erase_characters(count: int) -> void:
 
 func insert_blank_characters(count: int) -> void:
 	_text_buffer.insert_blank_characters(_cursor_y, _cursor_x, count)
+
+func backspace(count: int) -> void:
+	if count <= 0:
+		return
+	_cursor_x = maxi(0, _cursor_x - count)

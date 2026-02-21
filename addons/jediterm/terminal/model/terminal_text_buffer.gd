@@ -24,6 +24,23 @@ func get_screen_lines() -> String:
 		out += _row_to_string(_get_screen()[y]) + "\n"
 	return out
 
+func get_line_texts() -> Array:
+	# Similar to upstream screenLinesStorage.getLineTexts():
+	# returns only the created/non-empty lines without right-side padding.
+	var lines: Array = []
+	lines.resize(_height)
+	for y in _height:
+		lines[y] = _rstrip_spaces(_row_to_string(_get_screen()[y]))
+
+	var last_non_empty := -1
+	for y in range(lines.size() - 1, -1, -1):
+		if String(lines[y]) != "":
+			last_non_empty = y
+			break
+	if last_non_empty < 0:
+		return []
+	return lines.slice(0, last_non_empty + 1)
+
 func process_screen_lines(y_start: int, count: int, consumer) -> void:
 	if consumer == null:
 		return
@@ -190,3 +207,11 @@ func _row_to_string(row: PackedInt32Array) -> String:
 	for x in row.size():
 		out += String.chr(int(row[x]))
 	return out
+
+static func _rstrip_spaces(s: String) -> String:
+	var i := s.length() - 1
+	while i >= 0 and s.unicode_at(i) == SPACE:
+		i -= 1
+	if i < 0:
+		return ""
+	return s.substr(0, i + 1)
