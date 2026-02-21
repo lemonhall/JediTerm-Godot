@@ -376,6 +376,26 @@ Android 端 SSH 的长期方案：写一个轻量的 WebSocket-to-SSH 代理服�
 
 JediTerm 的测试套件是本项目的质量保障基石。测试数据文件（`testData/` 目录）直接复制，测试逻辑翻译为 GDScript + GUT 框架。
 
+### 在 Windows（PowerShell）下跑测试（本仓库约定）
+
+本仓库采用“每个 `test_*.gd` 都是一个可执行的 headless 脚本（`extends SceneTree`）”的方式跑测试，并提供统一跑测脚本：
+
+```powershell
+# 默认会尝试使用：
+# E:\Godot_v4.6-stable_win64.exe\Godot_v4.6-stable_win64_console.exe
+# 也可以手动指定：
+$env:GODOT_WIN_EXE = "E:\Godot_v4.6-stable_win64.exe\Godot_v4.6-stable_win64_console.exe"
+
+# 防卡死超时（秒）
+$env:GODOT_TEST_TIMEOUT_SEC = "120"
+
+# 跑单测
+scripts\run_godot_tests.ps1 -One tests\addons\jediterm\test_array_terminal_data_stream.gd
+
+# 跑一个 suite
+scripts\run_godot_tests.ps1 -Suite jediterm
+```
+
 | 原测试文件 | 覆盖范围 | 优先级 |
 |---|---|---|
 | EmulatorTest.java (7.8KB) | 基本仿真：mc、系统命令、擦除、滚动区域 | P0 |
@@ -414,3 +434,16 @@ JediTerm 的测试套件是本项目的质量保障基石。测试数据文件�
 https://github.com/lemonhall/jediterm-android
 
 https://github.com/lihop/godot-xterm
+
+## 建议：把参考项目 clone 到本地 refs/（并 .gitignore 掉）
+
+为了方便随时对照源码，建议把上述两个参考项目直接 clone 到本仓库的 `refs/` 目录下。本仓库已通过 `.gitignore` 忽略 `refs/*`（仅保留 `refs/README.md`），确保参考代码不会被误提交。
+
+PowerShell 命令：
+
+```powershell
+New-Item -ItemType Directory -Force refs | Out-Null
+
+git clone --depth 1 https://github.com/lemonhall/jediterm-android refs/jediterm-android
+git clone --depth 1 https://github.com/lihop/godot-xterm refs/godot-xterm
+```

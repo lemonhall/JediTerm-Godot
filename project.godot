@@ -1,0 +1,7 @@
+; Engine configuration file.
+; Generated/maintained manually for now (minimal project to run headless tests).
+config_version=5
+
+[application]
+config/name="JediTerm-Godot"
+
