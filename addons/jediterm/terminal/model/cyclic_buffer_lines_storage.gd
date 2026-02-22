@@ -1,4 +1,4 @@
-extends RefCounted
+extends "res://addons/jediterm/terminal/model/lines_storage.gd"
 
 const TerminalLine := preload("res://addons/jediterm/terminal/model/terminal_line.gd")
 
@@ -19,6 +19,10 @@ func get_line(index: int) -> RefCounted:
 	while index >= _lines.size():
 		add_to_bottom(TerminalLine.new())
 	return _lines[index]
+
+func iterator():
+	# Upstream exposes Iterable<TerminalLine>; keep a simple Array iterator for API parity.
+	return _lines
 
 func index_of(line: RefCounted) -> int:
 	return _lines.find(line)
@@ -48,6 +52,15 @@ func remove_from_bottom() -> RefCounted:
 
 func clear() -> void:
 	_lines.clear()
+
+func get_line_texts() -> Array:
+	# Helper for upstream parity; returns the current storage lines as strings.
+	var out: Array = []
+	out.resize(_lines.size())
+	for i in _lines.size():
+		var line = _lines[i]
+		out[i] = String(line.get_text()) if line != null and line.has_method("get_text") else ""
+	return out
 
 func add_all_to_bottom(lines: Array) -> void:
 	for line in lines:

@@ -20,23 +20,18 @@ v1 当前事实基准：`docs/plan/v1-index.md` 的 suite 全绿（但并不意�
 
 - 上游类文件：89；目标脚本：30
 - 上游→目标（按文件名 stem）：匹配 27 / 缺失 62
-- 已匹配类：缺失方法 124；额外函数 89
+- 已匹配类：缺失方法 0；额外函数 100
 - 缺失类：缺失方法 204（这些类未有同名目标脚本）
-- 缺失方法优先级（已匹配类）：P1=73, P2=39, P3=12
+- 缺失方法优先级（已匹配类）：P1=0, P2=0, P3=0
 - 缺失方法优先级（缺失类）：P1=111, P2=79, P3=14
-- elsewhere 命中：93（其中 P1：47）
+- elsewhere 命中：67（其中 P1：33）
 
 ### Top 缺口（按 P1 数量）
 
 | Upstream | Missing P1 | Target | Area |
 |---|---:|---|---|
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/LinesBuffer.java` | 23 | (none) | `terminal/model` |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/JediTerminal.java` | 19 | `addons/jediterm/terminal/model/jedi_terminal.gd` | `terminal/model` |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalTextBuffer.kt` | 19 | `addons/jediterm/terminal/model/terminal_text_buffer.gd` | `terminal/model` |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalLine.java` | 14 | `addons/jediterm/terminal/model/terminal_line.gd` | `terminal/model` |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/TerminalStarter.java` | 9 | (none) | `terminal/TerminalStarter.java` |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/CharBuffer.java` | 6 | `addons/jediterm/terminal/model/char_buffer.gd` | `terminal/model` |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/LinesStorage.kt` | 6 | `addons/jediterm/terminal/model/lines_storage.gd` | `terminal/model` |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TextBufferChangesMulticaster.kt` | 6 | (none) | `terminal/model` |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/ProcessTtyConnector.java` | 6 | (none) | `terminal/ProcessTtyConnector.java` |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/util/CharUtils.java` | 6 | (none) | `terminal/util` |
@@ -45,26 +40,31 @@ v1 当前事实基准：`docs/plan/v1-index.md` 的 suite 全绿（但并不意�
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/JediTermDebouncerImpl.java` | 5 | (none) | `terminal/model` |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/emulator/ControlSequence.java` | 4 | (none) | `terminal/emulator` |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalLineIntervalHighlighting.java` | 4 | (none) | `terminal/model` |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TextBufferChangesListener.kt` | 4 | (none) | `terminal/model` |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/emulator/JediEmulator.java` | 3 | (none) | `terminal/emulator` |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/StyledTextConsumerAdapter.java` | 3 | (none) | `terminal/StyledTextConsumerAdapter.java` |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/util/Pair.java` | 3 | (none) | `terminal/util` |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/core/Color.java` | 2 | (none) | `core/Color.java` |
 
 ### P1 缺口分布（按 Area）
 
 | Area | Missing P1 |
 |---|---:|
-| `terminal/model` | 121 |
+| `terminal/model` | 55 |
 | `terminal/emulator` | 18 |
 | `terminal/TerminalStarter.java` | 9 |
 | `terminal/util` | 9 |
 | `terminal/ProcessTtyConnector.java` | 6 |
 | `terminal/DataStreamIteratingEmulator.java` | 5 |
-| `core/typeahead` | 3 |
-| `terminal/HyperlinkStyle.java` | 3 |
 | `terminal/StyledTextConsumerAdapter.java` | 3 |
 | `core/input` | 2 |
 | `core/Color.java` | 2 |
 | `terminal/TtyBasedArrayDataStream.java` | 2 |
-| `core/Platform.kt` | 1 |
 | `core/compatibility` | 0 |
+| `core/Platform.kt` | 0 |
+| `core/typeahead` | 0 |
 | `core/util` | 0 |
+| `terminal/ArrayTerminalDataStream.java` | 0 |
 
 ## 文件级覆盖（上游类文件 → 目标脚本）
 
@@ -229,6 +229,7 @@ v1 当前事实基准：`docs/plan/v1-index.md` 的 suite 全绿（但并不意�
   - `next` (P1)
   - `processChar` (P1)
   - `resetEof` (P1)
+  - Hint：P1 名称 elsewhere 命中 2/4（例：`hasNext` → `addons/jediterm/terminal/model/char_buffer.gd:105`; `next` → `addons/jediterm/terminal/model/char_buffer.gd:108`）
 - `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/emulator/charset/CharacterSet.java`
   - `map` (P1)
   - `valueOf` (P1)
@@ -351,7 +352,7 @@ v1 当前事实基准：`docs/plan/v1-index.md` 的 suite 全绿（但并不意�
   - `removeFromTop` (P1)
   - `removeTopLines` (P1)
   - `writeString` (P1)
-  - Hint：P1 名称 elsewhere 命中 13/22（例：`addToBottom` → `addons/jediterm/terminal/model/cyclic_buffer_lines_storage.gd:31`; `addToTop` → `addons/jediterm/terminal/model/cyclic_buffer_lines_storage.gd:26`; `clear` → `addons/jediterm/terminal/model/cyclic_buffer_lines_storage.gd:49`）
+  - Hint：P1 名称 elsewhere 命中 16/22（例：`addToBottom` → `addons/jediterm/terminal/model/cyclic_buffer_lines_storage.gd:35`（+2）; `addToTop` → `addons/jediterm/terminal/model/cyclic_buffer_lines_storage.gd:30`（+2）; `clear` → `addons/jediterm/terminal/model/cyclic_buffer_lines_storage.gd:53`（+2））
 - `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/StoredCursor.java`
   - `StoredCursor` (P1)
   - `getCursorX` (P2)
@@ -386,6 +387,7 @@ v1 当前事实基准：`docs/plan/v1-index.md` 的 suite 全绿（但并不意�
   - `isDisposed` (P2)
   - `mergeWith` (P1)
   - `toString` (P3)
+  - Hint：P1 名称 elsewhere 命中 1/4（例：`doDispose` → `addons/jediterm/terminal/model/terminal_line.gd:260`）
 - `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalLineUtil.kt`
   - `getModificationCount` (P2)
   - `incModificationCount` (P1)
@@ -393,7 +395,7 @@ v1 当前事实基准：`docs/plan/v1-index.md` 的 suite 全绿（但并不意�
   - （未检测到 public/protected 方法；可能是常量/enum/注解/仅字段）
 - `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalResizeListener.kt`
   - `onResize` (P1)
-  - Hint：P1 名称 elsewhere 命中 1/1（例：`onResize` → `addons/jediterm/core/typeahead/terminal_type_ahead_manager.gd:130`）
+  - Hint：P1 名称 elsewhere 命中 1/1（例：`onResize` → `addons/jediterm/core/typeahead/terminal_type_ahead_manager.gd:156`）
 - `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalResizeResult.kt`
   - （未检测到 public/protected 方法；可能是常量/enum/注解/仅字段）
 - `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalSelectionChangesListener.kt`
@@ -465,7 +467,7 @@ v1 当前事实基准：`docs/plan/v1-index.md` 的 suite 全绿（但并不意�
   - `sendBytes` (P1)
   - `sendString` (P1)
   - `start` (P1)
-  - Hint：P1 名称 elsewhere 命中 1/8（例：`resize` → `addons/jediterm/terminal/model/jedi_terminal.gd:707`（+1））
+  - Hint：P1 名称 elsewhere 命中 1/8（例：`resize` → `addons/jediterm/terminal/model/jedi_terminal.gd:821`（+1））
 - `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/TtyBasedArrayDataStream.java`
   - `TtyBasedArrayDataStream` (P1)
   - `getChar` (P2)
@@ -497,21 +499,11 @@ v1 当前事实基准：`docs/plan/v1-index.md` 的 suite 全绿（但并不意�
 
 ### 已匹配类（有目标脚本）
 
-### `addons/jediterm/core/compatibility/point.gd`
-- Upstream: `refs/jediterm-android/lib/src/main/java/com/jediterm/core/compatibility/Point.java`
-- Missing upstream methods: 4（elsewhere 命中：3）
-  - `equals` (P3) → elsewhere: `addons/jediterm/core/typeahead/type_ahead_terminal_model.gd:17`, `addons/jediterm/terminal/terminal_color.gd:42`（+2）
-  - `hashCode` (P3) → elsewhere: `addons/jediterm/terminal/terminal_color.gd:45`, `addons/jediterm/terminal/terminal_key_encoder.gd:71`（+1）
-  - `setLocation` (P2)
-  - `toString` (P3) → elsewhere: `addons/jediterm/terminal/model/terminal_selection.gd:45`
-- Extra target funcs: 0
-
 ### `addons/jediterm/core/platform.gd`
 - Upstream: `refs/jediterm-android/lib/src/main/java/com/jediterm/core/Platform.kt`
-- Missing upstream methods: 2（elsewhere 命中：0）
-  - `current` (P1)
-  - `isWindows` (P2)
-- Extra target funcs: 0
+- Missing upstream methods: 0
+- Extra target funcs: 1
+  - `is_linux`
 
 ### `addons/jediterm/core/typeahead/debouncer.gd`
 - Upstream: `refs/jediterm-android/lib/src/main/java/com/jediterm/core/typeahead/Debouncer.java`
@@ -522,13 +514,7 @@ v1 当前事实基准：`docs/plan/v1-index.md` 的 suite 全绿（但并不意�
 
 ### `addons/jediterm/core/typeahead/terminal_type_ahead_manager.gd`
 - Upstream: `refs/jediterm-android/lib/src/main/java/com/jediterm/core/typeahead/TerminalTypeAheadManager.java`
-- Missing upstream methods: 6（elsewhere 命中：2）
-  - `equals` (P3) → elsewhere: `addons/jediterm/core/typeahead/type_ahead_terminal_model.gd:17`, `addons/jediterm/terminal/terminal_color.gd:42`（+2）
-  - `fromByteArray` (P1)
-  - `fromChar` (P1)
-  - `fromString` (P1)
-  - `getCharacterOrNull` (P2)
-  - `hashCode` (P3) → elsewhere: `addons/jediterm/terminal/terminal_color.gd:45`, `addons/jediterm/terminal/terminal_key_encoder.gd:71`（+1）
+- Missing upstream methods: 0
 - Extra target funcs: 3
   - `event_from_char`
   - `events_from_string`
@@ -536,8 +522,7 @@ v1 当前事实基准：`docs/plan/v1-index.md` 的 suite 全绿（但并不意�
 
 ### `addons/jediterm/core/typeahead/type_ahead_terminal_model.gd`
 - Upstream: `refs/jediterm-android/lib/src/main/java/com/jediterm/core/typeahead/TypeAheadTerminalModel.java`
-- Missing upstream methods: 1（elsewhere 命中：1）
-  - `hashCode` (P3) → elsewhere: `addons/jediterm/terminal/terminal_color.gd:45`, `addons/jediterm/terminal/terminal_key_encoder.gd:71`（+1）
+- Missing upstream methods: 0
 - Extra target funcs: 15
   - `_init`
   - `clear_predictions`
@@ -555,16 +540,6 @@ v1 当前事实基准：`docs/plan/v1-index.md` 的 suite 全绿（但并不意�
   - `remove_characters`
   - `unlock`
 
-### `addons/jediterm/core/util/term_size.gd`
-- Upstream: `refs/jediterm-android/lib/src/main/java/com/jediterm/core/util/TermSize.java`
-- Missing upstream methods: 5（elsewhere 命中：3）
-  - `equals` (P3) → elsewhere: `addons/jediterm/core/typeahead/type_ahead_terminal_model.gd:17`, `addons/jediterm/terminal/terminal_color.gd:42`（+2）
-  - `getColumns` (P2)
-  - `getRows` (P2)
-  - `hashCode` (P3) → elsewhere: `addons/jediterm/terminal/terminal_color.gd:45`, `addons/jediterm/terminal/terminal_key_encoder.gd:71`（+1）
-  - `toString` (P3) → elsewhere: `addons/jediterm/terminal/model/terminal_selection.gd:45`
-- Extra target funcs: 0
-
 ### `addons/jediterm/terminal/array_terminal_data_stream.gd`
 - Upstream: `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/ArrayTerminalDataStream.java`
 - Missing upstream methods: 0
@@ -573,52 +548,36 @@ v1 当前事实基准：`docs/plan/v1-index.md` 的 suite 全绿（但并不意�
 
 ### `addons/jediterm/terminal/emulator/system_command_sequence.gd`
 - Upstream: `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/emulator/SystemCommandSequence.kt`
-- Missing upstream methods: 3（elsewhere 命中：1）
-  - `getIntAt` (P2)
-  - `getStringAt` (P2)
-  - `toString` (P3) → elsewhere: `addons/jediterm/terminal/model/terminal_selection.gd:45`
+- Missing upstream methods: 0
 - Extra target funcs: 1
   - `_init`
 
 ### `addons/jediterm/terminal/hyperlink_style.gd`
 - Upstream: `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/HyperlinkStyle.java`
-- Missing upstream methods: 7（elsewhere 命中：2）
-  - `HyperlinkStyle` (P1)
-  - `build` (P1) → elsewhere: `addons/jediterm/terminal/text_style.gd:62`, `addons/jediterm/terminal/text_style.gd:142`
-  - `getHighlightMode` (P2)
-  - `getHighlightStyle` (P2)
-  - `getLinkInfo` (P2)
-  - `getPrevTextStyle` (P2)
-  - `toBuilder` (P1) → elsewhere: `addons/jediterm/terminal/text_style.gd:59`
-- Extra target funcs: 1
+- Missing upstream methods: 0
+- Extra target funcs: 6
   - `make`
+  - `setBackground`
+  - `setForeground`
+  - `setHighlightMode`
+  - `setLinkInfo`
+  - `setOption`
 
 ### `addons/jediterm/terminal/model/char_buffer.gd`
 - Upstream: `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/CharBuffer.java`
-- Missing upstream methods: 9（elsewhere 命中：2）
-  - `getBuf` (P2)
-  - `getStart` (P2) → elsewhere: `addons/jediterm/terminal/model/terminal_selection.gd:13`
-  - `hasNext` (P1)
-  - `iterator` (P1)
-  - `next` (P1)
-  - `remove` (P1)
-  - `subBuffer` (P1)
-  - `subSequence` (P1)
-  - `toString` (P3) → elsewhere: `addons/jediterm/terminal/model/terminal_selection.gd:45`
+- Missing upstream methods: 0
 - Extra target funcs: 1
   - `as_string`
 
 ### `addons/jediterm/terminal/model/cyclic_buffer_lines_storage.gd`
 - Upstream: `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/CyclicBufferLinesStorage.kt`
-- Missing upstream methods: 2（elsewhere 命中：0）
-  - `get` (P2)
-  - `iterator` (P1)
+- Missing upstream methods: 0
 - Extra target funcs: 11
   - `_init`
   - `add_all_to_bottom`
   - `add_all_to_top`
   - `delete_lines`
-  - `get_line`
+  - `get_line_texts`
   - `get_lines_as_string`
   - `insert_lines`
   - `remove_bottom_empty_lines`
@@ -638,34 +597,7 @@ v1 当前事实基准：`docs/plan/v1-index.md` 的 suite 全绿（但并不意�
 
 ### `addons/jediterm/terminal/model/jedi_terminal.gd`
 - Upstream: `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/JediTerminal.java`
-- Missing upstream methods: 27（elsewhere 命中：2）
-  - `addCustomCommandListener` (P1)
-  - `designateCharacterSet` (P1)
-  - `deviceAttributes` (P1)
-  - `deviceStatusReport` (P1)
-  - `index` (P1) → elsewhere: `addons/jediterm/terminal/terminal_color.gd:57`
-  - `isModelEnabled` (P2)
-  - `linePositionAbsolute` (P1)
-  - `mapCharsetToGL` (P1)
-  - `mapCharsetToGR` (P1)
-  - `mouseDragged` (P1)
-  - `mouseMoved` (P1)
-  - `mousePressed` (P1)
-  - `mouseReleased` (P1)
-  - `mouseWheelMoved` (P1)
-  - `processCustomCommand` (P1)
-  - `reset` (P1) → elsewhere: `addons/jediterm/terminal/model/style_state.gd:13`
-  - `scrollDown` (P1)
-  - `scrollUp` (P1)
-  - `setAnsiConformanceLevel` (P2)
-  - `setBracketedPasteMode` (P2)
-  - `setCursorVisible` (P2)
-  - `setLinkUriFinished` (P2)
-  - `setLinkUriStarted` (P2)
-  - `setMouseFormat` (P2)
-  - `setMouseMode` (P2)
-  - `singleShiftSelect` (P1)
-  - `writeDoubleByte` (P1)
+- Missing upstream methods: 0
 - Extra target funcs: 15
   - `begin_osc8_hyperlink`
   - `cursor_vertical_absolute`
@@ -685,97 +617,39 @@ v1 当前事实基准：`docs/plan/v1-index.md` 的 suite 全绿（但并不意�
 
 ### `addons/jediterm/terminal/model/lines_storage.gd`
 - Upstream: `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/LinesStorage.kt`
-- Missing upstream methods: 6（elsewhere 命中：6）
-  - `addToBottom` (P1) → elsewhere: `addons/jediterm/terminal/model/cyclic_buffer_lines_storage.gd:31`
-  - `addToTop` (P1) → elsewhere: `addons/jediterm/terminal/model/cyclic_buffer_lines_storage.gd:26`
-  - `clear` (P1) → elsewhere: `addons/jediterm/terminal/model/cyclic_buffer_lines_storage.gd:49`
-  - `indexOf` (P1) → elsewhere: `addons/jediterm/terminal/model/cyclic_buffer_lines_storage.gd:23`
-  - `removeFromBottom` (P1) → elsewhere: `addons/jediterm/terminal/model/cyclic_buffer_lines_storage.gd:43`
-  - `removeFromTop` (P1) → elsewhere: `addons/jediterm/terminal/model/cyclic_buffer_lines_storage.gd:37`
-- Extra target funcs: 1
+- Missing upstream methods: 0
+- Extra target funcs: 3
+  - `get_line`
   - `get_size`
-
-### `addons/jediterm/terminal/model/selection_util.gd`
-- Upstream: `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/SelectionUtil.java`
-- Missing upstream methods: 2（elsewhere 命中：0）
-  - `getNextSeparator` (P2)
-  - `getPreviousSeparator` (P2)
-- Extra target funcs: 0
+  - `size`
 
 ### `addons/jediterm/terminal/model/style_state.gd`
 - Upstream: `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/StyleState.java`
-- Missing upstream methods: 6（elsewhere 命中：0）
-  - `StyleState` (P1)
-  - `getCurrent` (P2)
-  - `getDefaultBackground` (P2)
-  - `getDefaultForeground` (P2)
-  - `setCurrent` (P2)
-  - `setDefaultStyle` (P2)
+- Missing upstream methods: 0
 - Extra target funcs: 2
   - `get_current_style`
   - `set_current_style`
 
 ### `addons/jediterm/terminal/model/terminal_line.gd`
 - Upstream: `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalLine.java`
-- Missing upstream methods: 21（elsewhere 命中：8）
-  - `add` (P1)
-  - `addCustomHighlighting` (P1)
-  - `charAt` (P1) → elsewhere: `addons/jediterm/terminal/model/char_buffer.gd:48`
-  - `clear` (P1) → elsewhere: `addons/jediterm/terminal/model/cyclic_buffer_lines_storage.gd:49`
-  - `clearArea` (P1)
-  - `copy` (P1) → elsewhere: `addons/jediterm/core/typeahead/type_ahead_terminal_model.gd:14`
-  - `createEmpty` (P1)
-  - `deleteCharacters` (P1) → elsewhere: `addons/jediterm/terminal/model/jedi_terminal.gd:562`, `addons/jediterm/terminal/model/terminal_text_buffer.gd:299`
-  - `doDispose` (P1)
-  - `forEachEntry` (P1)
-  - `getEntries` (P2)
-  - `getLength` (P2)
-  - `getStyle` (P2)
-  - `getStyleAt` (P2) → elsewhere: `addons/jediterm/terminal/model/terminal_text_buffer.gd:719`
-  - `insertBlankCharacters` (P1) → elsewhere: `addons/jediterm/terminal/model/jedi_terminal.gd:571`, `addons/jediterm/terminal/model/terminal_text_buffer.gd:435`
-  - `insertString` (P1)
-  - `isWrapped` (P2)
-  - `iterator` (P1)
-  - `process` (P1) → elsewhere: `addons/jediterm/terminal/emulator/ansi_input_processor.gd:62`
-  - `setWrapped` (P2)
-  - `toString` (P3) → elsewhere: `addons/jediterm/terminal/model/terminal_selection.gd:45`
+- Missing upstream methods: 0
 - Extra target funcs: 2
   - `apply_style_range`
   - `get_style_runs`
 
 ### `addons/jediterm/terminal/model/terminal_text_buffer.gd`
 - Upstream: `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalTextBuffer.kt`
-- Missing upstream methods: 23（elsewhere 命中：5）
-  - `addChangesListener` (P1)
-  - `addHistoryBufferListener` (P1)
-  - `addLine` (P1)
-  - `addModelListener` (P1)
-  - `clearHistory` (P1)
-  - `clearLines` (P1) → elsewhere: `addons/jediterm/terminal/model/jedi_terminal.gd:369`
-  - `clearScreenBuffer` (P1)
-  - `clearTypeAheadPredictions` (P1)
-  - `findScreenLineIndex` (P1)
-  - `getBuffersCharAt` (P2)
-  - `getCharAt` (P2)
-  - `getLine` (P2) → elsewhere: `addons/jediterm/terminal/model/cyclic_buffer_lines_storage.gd:14`, `addons/jediterm/terminal/model/hyperlinks/text_processing.gd:69`
-  - `getStyledCharAt` (P2)
-  - `lock` (P1) → elsewhere: `addons/jediterm/core/typeahead/type_ahead_terminal_model.gd:54`
-  - `modify` (P1)
-  - `moveScreenLinesToHistory` (P1)
-  - `removeChangesListener` (P1)
-  - `removeHistoryBufferListener` (P1)
-  - `removeModelListener` (P1)
-  - `scrollArea` (P1)
-  - `tryLock` (P1)
-  - `unlock` (P1) → elsewhere: `addons/jediterm/core/typeahead/type_ahead_terminal_model.gd:55`
-  - `writeString` (P1) → elsewhere: `addons/jediterm/terminal/model/jedi_terminal.gd:178`, `addons/jediterm/terminal/model/jedi_terminal.gd:263`（+1）
-- Extra target funcs: 24
+- Missing upstream methods: 0
+- Extra target funcs: 27
   - `_init`
   - `clear_screen_and_history`
   - `clear_screen_buffer_storage`
   - `clear_screen_only`
   - `erase_in_display`
   - `erase_in_line`
+  - `getHeight`
+  - `getHistoryLinesCount`
+  - `getWidth`
   - `get_height`
   - `get_history_line_texts`
   - `get_history_lines_count`

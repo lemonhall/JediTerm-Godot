@@ -45,6 +45,28 @@ func format(new_args: Array) -> String:
 
 	return esc + "]" + body + _terminator
 
+func getStringAt(index: int):
+	if index < 0 or index >= args.size():
+		return null
+	return String(args[index])
+
+func getIntAt(index: int, default_value: int) -> int:
+	var s = getStringAt(index)
+	if s == null:
+		return int(default_value)
+	var parsed := String(s).to_int()
+	# Godot's to_int returns 0 for non-numeric; mimic upstream defaultValue behavior.
+	if parsed == 0 and String(s) != "0":
+		return int(default_value)
+	return int(parsed)
+
+func toString() -> String:
+	# Best-effort; upstream uses CharUtils.toHumanReadableText.
+	return format(args)
+
+func _to_string() -> String:
+	return toString()
+
 static func _is_terminated(AsciiScript, text: String) -> bool:
 	var len := text.length()
 	if len <= 0:
@@ -64,4 +86,3 @@ static func _terminator_length(AsciiScript, text: String) -> int:
 	if _is_two_bytes_terminator(AsciiScript, text):
 		return 2
 	return 1 if text.length() > 0 else 0
-

@@ -59,3 +59,7 @@ func get_terminal_width() -> int: return 0
 func is_type_ahead_enabled() -> bool: return true
 func get_latency_threshold() -> int: return 0
 func get_shell_type() -> int: return ShellType.UNKNOWN
+
+func hashCode() -> int:
+	# Identity-style hash; this is an interface in upstream, but some callers expect the method to exist.
+	return int(get_instance_id())

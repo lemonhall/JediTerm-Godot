@@ -93,6 +93,10 @@ def _method_norm_for_match(upstream_method: str, upstream_class: str) -> str:
     # constructor -> `_init`
     if upstream_method == upstream_class:
         return _norm("_init")
+    # Kotlin operator `get(Int)` conflicts with Godot's built-in `Object.get(StringName)`.
+    # In this repo the equivalent API is typically exposed as `get_line(index)`.
+    if upstream_method == "get" and upstream_class in {"LinesStorage", "CyclicBufferLinesStorage"}:
+        return _norm("get_line")
     return _norm(upstream_method)
 
 def _method_norms_for_match(upstream_method: str, upstream_class: str) -> set[str]:
@@ -100,6 +104,8 @@ def _method_norms_for_match(upstream_method: str, upstream_class: str) -> set[st
     # `static func ClassName(...)` instead of `_init`, so accept both forms.
     if upstream_method == upstream_class:
         return {_norm("_init"), _norm(upstream_class)}
+    if upstream_method == "get" and upstream_class in {"LinesStorage", "CyclicBufferLinesStorage"}:
+        return {_norm("get_line")}
     return {_norm(upstream_method)}
 
 

@@ -23,6 +23,10 @@ var _alt_wrapped_flags: PackedByteArray
 var _main_storage_size: int = 0
 var _alt_storage_size: int = 0
 var _tracked_points: Array = []
+var _lock_depth: int = 0
+var _model_listeners: Array = []
+var _history_buffer_listeners: Array = []
+var _changes_listeners: Array = []
 
 func _init(width: int, height: int, _state: RefCounted) -> void:
 	_width = maxi(0, width)
@@ -96,6 +100,12 @@ func get_width() -> int:
 func get_height() -> int:
 	return _height
 
+func getWidth() -> int:
+	return get_width()
+
+func getHeight() -> int:
+	return get_height()
+
 func use_alternate_buffer(enabled: bool) -> void:
 	if enabled == _using_alt:
 		return
@@ -109,6 +119,9 @@ func use_alternate_buffer(enabled: bool) -> void:
 
 func get_history_lines_count() -> int:
 	return int(_history_lines.size())
+
+func getHistoryLinesCount() -> int:
+	return get_history_lines_count()
 
 func get_history_lines_storage() -> RefCounted:
 	return _history_lines
@@ -149,6 +162,188 @@ func process_history_and_screen_lines(scroll_origin: int, maximal_lines_to_proce
 			line_text = String(combined[idx])
 		if consumer.has_method("consume"):
 			consumer.consume(0, y, TextStyle.EMPTY, CharBuffer.new(line_text), start_index)
+
+func addModelListener(listener) -> void:
+	_model_listeners.append(listener)
+
+func removeModelListener(listener) -> void:
+	_model_listeners.erase(listener)
+
+func addHistoryBufferListener(listener) -> void:
+	_history_buffer_listeners.append(listener)
+
+func removeHistoryBufferListener(listener) -> void:
+	_history_buffer_listeners.erase(listener)
+
+func addChangesListener(listener) -> void:
+	_changes_listeners.append(listener)
+
+func removeChangesListener(listener) -> void:
+	_changes_listeners.erase(listener)
+
+func lock() -> void:
+	_lock_depth += 1
+
+func unlock() -> void:
+	_lock_depth = maxi(0, _lock_depth - 1)
+
+func tryLock() -> bool:
+	lock()
+	return true
+
+func modify(action) -> void:
+	lock()
+	if action != null:
+		if action is Callable:
+			action.call()
+		elif action.has_method("run"):
+			action.run()
+		elif action.has_method("call"):
+			action.call()
+	unlock()
+
+func clearHistory() -> void:
+	_history_lines.clear()
+
+func clearScreenBuffer() -> void:
+	clear_screen_only()
+
+func clearTypeAheadPredictions() -> void:
+	# TypeAhead not implemented at buffer level (tests drive it via separate model).
+	pass
+
+func findScreenLineIndex(_line: RefCounted) -> int:
+	# Screen is grid-based in this port; no stable TerminalLine identity.
+	return -1
+
+func getLine(index: int) -> RefCounted:
+	if index >= 0:
+		if index >= _height:
+			push_error("Attempt to get line out of bounds: %d >= %d" % [int(index), int(_height)])
+			return TerminalLine.new()
+		var text := _row_to_string_len(_get_screen()[index], int((_alt_line_lengths if _using_alt else _main_line_lengths)[index]))
+		var line := TerminalLine.new()
+		line.is_wrapped = bool((_alt_wrapped_flags if _using_alt else _main_wrapped_flags)[index])
+		line.write_string(0, CharBuffer.new(text), TextStyle.EMPTY)
+		return line
+
+	var history_count := int(_history_lines.size())
+	if -index > history_count:
+		push_error("Attempt to get line out of bounds: %d < %d" % [int(index), -history_count])
+		return TerminalLine.new()
+	return _history_lines.get_line(history_count + index)
+
+func getBuffersCharAt(x: int, y: int) -> int:
+	return getCharAt(x, y)
+
+func getCharAt(x: int, y: int) -> int:
+	var line := getLine(y)
+	if line == null or not line.has_method("charAt"):
+		return SPACE
+	return int(line.charAt(x))
+
+func getStyledCharAt(x: int, y: int) -> Array:
+	var line := getLine(y)
+	if line == null:
+		return [SPACE, TextStyle.EMPTY]
+	var cp := int(line.charAt(x)) if line.has_method("charAt") else SPACE
+	var st := TextStyle.EMPTY
+	if y >= 0:
+		st = get_style_at(x, y)
+	elif line.has_method("getStyleAt"):
+		st = line.getStyleAt(x)
+	return [cp, st]
+
+func scrollArea(scrollRegionTop: int, dy: int, scrollRegionBottom: int) -> void:
+	if dy == 0:
+		return
+	var top0 := clampi(scrollRegionTop - 1, 0, _height - 1)
+	var bottom0 := clampi(scrollRegionBottom - 1, 0, _height - 1)
+	if dy > 0:
+		scroll_region_down(top0, bottom0, dy)
+	else:
+		scroll_region_up(top0, bottom0, -dy)
+
+func writeString(x: int, y: int, str) -> void:
+	# Upstream uses 1-based y.
+	var y0 := int(y) - 1
+	if y0 < 0 or y0 >= _height:
+		return
+	var style := TextStyle.EMPTY
+	if str == null:
+		return
+	if str is String:
+		var s := String(str)
+		for i in s.length():
+			write_codepoint(x + i, y0, int(s.unicode_at(i)), style)
+		return
+	if str is RefCounted and str.has_method("length") and str.has_method("char_at"):
+		var n := int(str.length())
+		for i in n:
+			write_codepoint(x + i, y0, int(str.char_at(i)), style)
+
+func addLine(line: RefCounted) -> void:
+	if line == null or _height <= 0:
+		return
+	var text := ""
+	if line.has_method("get_text"):
+		text = String(line.get_text())
+	elif line.has_method("getText"):
+		text = String(line.getText())
+
+	var storage_size := _alt_storage_size if _using_alt else _main_storage_size
+	var y := int(storage_size)
+	if y >= _height:
+		scroll_region_up(0, _height - 1, 1)
+		y = _height - 1
+
+	_clear_row_full(y)
+	var n := mini(_width, text.length())
+	for i in n:
+		write_codepoint(i, y, int(text.unicode_at(i)), TextStyle.EMPTY)
+
+	var wrapped := false
+	if line.has_method("get"):
+		var v = line.get("is_wrapped")
+		if v != null:
+			wrapped = bool(v)
+	elif line.has_method("isWrapped"):
+		wrapped = bool(line.isWrapped())
+	set_line_wrapped(y, wrapped)
+
+	if _using_alt:
+		_alt_storage_size = maxi(_alt_storage_size, y + 1)
+	else:
+		_main_storage_size = maxi(_main_storage_size, y + 1)
+
+func clearLines(startRow: int, endRow: int) -> void:
+	if _height <= 0:
+		return
+	var from_y := clampi(startRow, 0, _height - 1)
+	var to_y := clampi(endRow, 0, _height - 1)
+	if from_y > to_y:
+		var tmp := from_y
+		from_y = to_y
+		to_y = tmp
+	for y in range(from_y, to_y + 1):
+		_clear_row_full(y)
+		set_line_wrapped(y, false)
+
+func moveScreenLinesToHistory() -> void:
+	if _height <= 0:
+		return
+	var lengths := _alt_line_lengths if _using_alt else _main_line_lengths
+	var wraps := _alt_wrapped_flags if _using_alt else _main_wrapped_flags
+	var storage_size := _alt_storage_size if _using_alt else _main_storage_size
+	var n := clampi(int(storage_size), 0, _height)
+	for y in n:
+		_add_row_to_history(_get_screen()[y], int(lengths[y]), bool(wraps[y]))
+	clear_screen_only()
+	if _using_alt:
+		_alt_storage_size = 0
+	else:
+		_main_storage_size = 0
+
 
 func write_codepoint(x: int, y: int, cp: int, style = null) -> void:
 	if x < 0 or x >= _width or y < 0 or y >= _height:

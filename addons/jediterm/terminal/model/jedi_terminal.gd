@@ -35,11 +35,17 @@ var _osc8_prev_style: Dictionary = {}
 var _terminal_key_encoder: RefCounted
 var _application_title_listeners: Array = []
 var _resize_listeners: Array = []
+var _custom_command_listeners: Array = []
 var _window_titles_stack: Array[String] = []
 var _terminal_output = null
 var _auto_new_line: bool = false
 var _application_arrow_keys: bool = false
 var _application_keypad: bool = false
+var _bracketed_paste_mode: bool = false
+var _cursor_visible: bool = true
+var _mouse_mode: int = 0
+var _mouse_format: int = 0
+var _ansi_conformance_level: int = 0
 
 func _init(display: RefCounted, text_buffer: RefCounted, state: RefCounted) -> void:
 	_display = display
@@ -90,6 +96,18 @@ func addResizeListener(listener) -> void:
 
 func removeResizeListener(listener) -> void:
 	_resize_listeners.erase(listener)
+
+func addCustomCommandListener(listener) -> void:
+	_custom_command_listeners.append(listener)
+
+func processCustomCommand(command: String) -> void:
+	for listener in _custom_command_listeners:
+		if listener == null:
+			continue
+		if listener.has_method("processCustomCommand"):
+			listener.processCustomCommand(command)
+		elif listener.has_method("onCustomCommand"):
+			listener.onCustomCommand(command)
 
 func getTerminalWidth() -> int:
 	return get_width()
@@ -360,6 +378,12 @@ func disconnected() -> void:
 	if _display != null and _display.has_method("set_cursor_visible"):
 		_display.set_cursor_visible(false)
 
+func isModelEnabled() -> bool:
+	return true
+
+func reset() -> void:
+	reset_to_initial_state()
+
 func clearScreen() -> void:
 	if _text_buffer != null and _text_buffer.has_method("clear_screen_only"):
 		_text_buffer.clear_screen_only()
@@ -368,6 +392,96 @@ func clearScreen() -> void:
 
 func clearLines() -> void:
 	clearScreen()
+
+func index() -> void:
+	# IND (Index): like line feed.
+	new_line()
+
+func linePositionAbsolute(y: int) -> void:
+	cursor_vertical_absolute(y)
+
+func mapCharsetToGL(_num: int) -> void:
+	# Charset support not implemented in this port yet.
+	pass
+
+func mapCharsetToGR(_num: int) -> void:
+	# Charset support not implemented in this port yet.
+	pass
+
+func designateCharacterSet(_tableNumber: int, _charset) -> void:
+	# Charset support not implemented in this port yet.
+	pass
+
+func singleShiftSelect(_num: int) -> void:
+	# Charset support not implemented in this port yet.
+	pass
+
+func setAnsiConformanceLevel(level: int) -> void:
+	_ansi_conformance_level = int(level)
+
+func setBracketedPasteMode(enabled: bool) -> void:
+	_bracketed_paste_mode = bool(enabled)
+
+func setCursorVisible(visible: bool) -> void:
+	_cursor_visible = bool(visible)
+	if _display != null and _display.has_method("set_cursor_visible"):
+		_display.set_cursor_visible(_cursor_visible)
+
+func setMouseMode(mode: int) -> void:
+	_mouse_mode = int(mode)
+
+func setMouseFormat(format: int) -> void:
+	_mouse_format = int(format)
+
+func mouseMoved(_x: int, _y: int, _event) -> void: pass
+func mouseDragged(_x: int, _y: int, _event) -> void: pass
+func mousePressed(_x: int, _y: int, _event) -> void: pass
+func mouseReleased(_x: int, _y: int, _event) -> void: pass
+func mouseWheelMoved(_x: int, _y: int, _event) -> void: pass
+
+func deviceStatusReport(str: String) -> void:
+	if _terminal_output != null:
+		if _terminal_output.has_method("sendString"):
+			_terminal_output.sendString(str, false)
+			return
+	send_output(str)
+
+func deviceAttributes(response: PackedByteArray) -> void:
+	if _terminal_output != null:
+		if _terminal_output.has_method("sendBytes"):
+			_terminal_output.sendBytes(response, false)
+			return
+	# Fallback: interpret as UTF-8.
+	send_output(response.get_string_from_utf8())
+
+func setLinkUriStarted(uri: String) -> void:
+	begin_osc8_hyperlink(uri)
+
+func setLinkUriFinished() -> void:
+	end_osc8_hyperlink()
+
+func scrollUp(count: int) -> void:
+	scrollDown(-int(count))
+
+func scrollDown(count: int) -> void:
+	if _text_buffer == null:
+		return
+	if _text_buffer.has_method("scrollArea"):
+		_text_buffer.scrollArea(_scroll_top + 1, count, _scroll_bottom + 1)
+		return
+	if count > 0 and _text_buffer.has_method("scroll_region_down"):
+		_text_buffer.scroll_region_down(_scroll_top, _scroll_bottom, count)
+	elif count < 0 and _text_buffer.has_method("scroll_region_up"):
+		_text_buffer.scroll_region_up(_scroll_top, _scroll_bottom, -count)
+
+func writeDoubleByte(bytes_of_char) -> void:
+	# Best-effort: treat input as UTF-8 bytes.
+	var s := ""
+	if bytes_of_char is PackedByteArray:
+		s = bytes_of_char.get_string_from_utf8()
+	elif bytes_of_char is String:
+		s = String(bytes_of_char)
+	send_output(s)
 
 func fillScreen(c) -> void:
 	if _text_buffer == null or not _text_buffer.has_method("write_codepoint"):

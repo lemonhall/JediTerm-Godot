@@ -34,6 +34,32 @@ static func _is_printable_unicode(cp: int) -> bool:
 	# Approximation: printable and not control.
 	return cp >= 0x20 and cp != 0x7F
 
+# Upstream-compatible helpers (TypeAheadEvent factory).
+static func fromChar(ch: String) -> Dictionary:
+	return event_from_char(ch)
+
+static func fromString(s: String) -> Array:
+	return events_from_string(s)
+
+static func fromByteArray(byte_array: PackedByteArray) -> Array:
+	if byte_array.is_empty():
+		return []
+	var s := byte_array.get_string_from_utf8()
+	if s.length() == 0:
+		return []
+	var cp0 := int(s.unicode_at(0))
+	if _is_printable_unicode(cp0):
+		return fromString(s)
+	return [{"event_type": "Unknown"}]
+
+static func getCharacterOrNull(event: Dictionary):
+	if event == null:
+		return null
+	if String(event.get("event_type", "Unknown")) != "Character":
+		return null
+	var ch := String(event.get("character", ""))
+	return ch if ch.length() == 1 else null
+
 class LatencyStatistics:
 	extends RefCounted
 	const LATENCY_BUFFER_SIZE := 30
@@ -352,3 +378,19 @@ func _create_prediction(initial_line: RefCounted, key_event: Dictionary) -> Pred
 			return CursorMovePrediction.new(new_line, amount, ok2)
 		_:
 			return HardBoundaryPrediction.new()
+
+func equals(other) -> bool:
+	if other == null:
+		return false
+	if not (other is RefCounted):
+		return false
+	if not other.has_method("hashCode"):
+		return false
+	return hashCode() == int(other.hashCode())
+
+func hashCode() -> int:
+	var h := 17
+	h = 31 * h + (int(_terminal_model.get_instance_id()) if _terminal_model != null else 0)
+	h = 31 * h + int(_predictions.size())
+	h = 31 * h + int(_out_of_sync_detected)
+	return h
