@@ -8,6 +8,7 @@ const TerminalStarter := preload("res://addons/jediterm/terminal/terminal_starte
 
 const TerminalColor := preload("res://addons/jediterm/terminal/terminal_color.gd")
 const TextStyle := preload("res://addons/jediterm/terminal/text_style.gd")
+const Ascii := preload("res://addons/jediterm/core/ascii.gd")
 
 const DEFAULT_TERMINAL_FONT_PATH := "res://addons/jediterm/render/fonts/MapleMono-CN-Regular.ttf"
 const DEFAULT_TERMINAL_FONT_ALT_PATH := "res://addons/jediterm/render/fonts/SarasaMonoSC-Regular.ttf"
@@ -45,6 +46,9 @@ var _buf: RefCounted = null
 var _starter: RefCounted = null
 var _tty: RefCounted = null
 
+var _input_line: String = ""
+var _esc_state: int = 0 # 0: none, 1: ESC, 2: ESC[
+
 var _is_orbiting: bool = false
 var _is_panning: bool = false
 var _orbit_yaw: float = 0.0
@@ -57,6 +61,13 @@ const PAN_SENS := 0.002
 const ZOOM_STEP := 0.55
 const MIN_DIST := 2.0
 const MAX_DIST := 12.0
+
+const _BYTE_ESC := 0x1B
+const _BYTE_LBRACKET := 0x5B # '['
+const _BYTE_CSI_A := 0x41 # 'A'
+const _BYTE_CSI_B := 0x42 # 'B'
+const _BYTE_CSI_C := 0x43 # 'C'
+const _BYTE_CSI_D := 0x44 # 'D'
 
 func _ready() -> void:
 	_update_camera_transform()
@@ -192,18 +203,104 @@ func _prompt() -> void:
 	_terminal.set_current_style(TextStyle.empty())
 
 func _on_tty_write(data) -> void:
-	# Minimal loopback: printable strings get echoed; bytes are interpreted as UTF-8 best-effort.
+	# Loopback: interpret a small subset of TTY bytes to mimic a REPL-like feel.
 	if typeof(data) == TYPE_STRING:
-		var s := String(data)
-		if s != "":
-			_terminal.writeString(s)
+		_consume_text(String(data))
 		return
 	if data is PackedByteArray:
-		var bytes := PackedByteArray(data)
-		if bytes.size() > 0:
-			var s2 := bytes.get_string_from_utf8()
-			_terminal.writeString(s2)
+		_consume_bytes(PackedByteArray(data))
 		return
+
+func _consume_text(s: String) -> void:
+	# TerminalControl sends printable characters via sendString; treat them as direct input.
+	if s == "":
+		return
+	for i in s.length():
+		var ch := s.substr(i, 1)
+		_terminal.writeString(ch)
+		_input_line += ch
+
+func _consume_bytes(bytes: PackedByteArray) -> void:
+	for b in bytes:
+		_consume_byte(int(b))
+
+func _consume_byte(b: int) -> void:
+	b &= 0xFF
+
+	if _esc_state == 1:
+		if b == _BYTE_LBRACKET:
+			_esc_state = 2
+			return
+		_esc_state = 0
+	elif _esc_state == 2:
+		match b:
+			_BYTE_CSI_A:
+				_terminal.cursor_up(1)
+			_BYTE_CSI_B:
+				_terminal.cursor_down(1)
+			_BYTE_CSI_C:
+				_terminal.cursor_forward(1)
+			_BYTE_CSI_D:
+				_terminal.cursor_backward(1)
+			_:
+				pass
+		_esc_state = 0
+		return
+
+	match b:
+		_BYTE_ESC:
+			_esc_state = 1
+			return
+		0x0D, 0x0A:
+			_on_enter()
+			return
+		0x7F, int(Ascii.BS_CHAR):
+			_on_backspace()
+			return
+		3:
+			_terminal.writeString("^C")
+			_terminal.crnl()
+			_input_line = ""
+			_prompt()
+			return
+		4:
+			_terminal.writeString("^D")
+			_terminal.crnl()
+			_input_line = ""
+			_prompt()
+			return
+		26:
+			_terminal.writeString("^Z")
+			_terminal.crnl()
+			_input_line = ""
+			_prompt()
+			return
+		9:
+			_terminal.writeString("    ")
+			_input_line += "    "
+			return
+		_:
+			if b >= 0x20:
+				var ch := String.chr(b)
+				_terminal.writeString(ch)
+				_input_line += ch
+
+func _on_enter() -> void:
+	_terminal.crnl()
+	_terminal.set_current_style(TextStyle.TextStyle(TerminalColor.rgb(120, 200, 255), null, {}))
+	_terminal.writeString("echo: " + _input_line)
+	_terminal.set_current_style(TextStyle.empty())
+	_terminal.crnl()
+	_input_line = ""
+	_prompt()
+
+func _on_backspace() -> void:
+	if _input_line == "":
+		return
+	_input_line = _input_line.substr(0, _input_line.length() - 1)
+	_terminal.backspace(1)
+	_terminal.writeString(" ")
+	_terminal.backspace(1)
 func _bind_screen_material() -> void:
 	if screen == null:
 		push_warning("3D demo: TerminalScreen node missing")
