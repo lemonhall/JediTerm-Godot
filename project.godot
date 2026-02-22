@@ -11,4 +11,5 @@ config_version=5
 [application]
 
 config/name="JediTerm-Godot"
+run/main_scene="res://scenes/render_v2_sample.tscn"
 config/features=PackedStringArray("4.6")

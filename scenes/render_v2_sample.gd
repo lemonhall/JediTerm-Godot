@@ -75,4 +75,3 @@ func _write_demo(_cols: int, _rows: int) -> void:
 	_terminal.crnl()
 	_terminal.writeString("接下来会做：脏行刷新、更多键位映射、选择/复制/粘贴、ViewportTexture。")
 	_terminal.crnl()
-
