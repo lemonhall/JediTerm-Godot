@@ -20,11 +20,36 @@ v1 当前事实基准：`docs/plan/v1-index.md` 的 suite 全绿（但并不意�
 
 - 上游类文件：89；目标脚本：92
 - 上游→目标（按文件名 stem）：匹配 89 / 缺失 0
-- 已匹配类：缺失方法 0；额外函数 113
+- 已匹配类：缺失方法 0；额外函数 115
 - 缺失类：缺失方法 0（这些类未有同名目标脚本）
 - 缺失方法优先级（已匹配类）：P1=0, P2=0, P3=0
 - 缺失方法优先级（缺失类）：P1=0, P2=0, P3=0
 - elsewhere 命中：0（其中 P1：0）
+- 疑似 stub 目标脚本：21（仅 `extends`/空壳）
+
+### Stub 目标脚本（优先补齐实现/契约）
+
+- `addons/jediterm/core/input/event.gd`
+- `addons/jediterm/core/terminal_coordinates.gd`
+- `addons/jediterm/terminal/emulator/emulator.gd`
+- `addons/jediterm/terminal/emulator/mouse/mouse_button_codes.gd`
+- `addons/jediterm/terminal/emulator/mouse/mouse_button_modifier_flags.gd`
+- `addons/jediterm/terminal/emulator/mouse/mouse_format.gd`
+- `addons/jediterm/terminal/emulator/mouse/mouse_mode.gd`
+- `addons/jediterm/terminal/emulator/mouse/terminal_mouse_listener.gd`
+- `addons/jediterm/terminal/model/hyperlinks/hyperlink_filter.gd`
+- `addons/jediterm/terminal/model/tabulator.gd`
+- `addons/jediterm/terminal/model/terminal_application_title_listener.gd`
+- `addons/jediterm/terminal/model/terminal_model_listener.gd`
+- `addons/jediterm/terminal/model/terminal_resize_result.gd`
+- `addons/jediterm/terminal/model/terminal_text_buffer_resize.gd`
+- `addons/jediterm/terminal/questioner.gd`
+- `addons/jediterm/terminal/styled_text_consumer.gd`
+- `addons/jediterm/terminal/terminal.gd`
+- `addons/jediterm/terminal/terminal_data_stream.gd`
+- `addons/jediterm/terminal/terminal_display.gd`
+- `addons/jediterm/terminal/terminal_executor_service_manager.gd`
+- `addons/jediterm/terminal/terminal_output_stream.gd`
 
 ### Top 缺口（按 P1 数量）
 
@@ -77,13 +102,13 @@ v1 当前事实基准：`docs/plan/v1-index.md` 的 suite 全绿（但并不意�
 |---|---|---|
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/core/Color.java` | `addons/jediterm/core/color.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/core/compatibility/Point.java` | `addons/jediterm/core/compatibility/point.gd` | present |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/core/input/Event.java` | `addons/jediterm/core/input/event.gd` | present |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/core/input/Event.java` | `addons/jediterm/core/input/event.gd` | present (stub) |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/core/input/InputEvent.java` | `addons/jediterm/core/input_event.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/core/input/KeyEvent.java` | `addons/jediterm/core/key_event.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/core/input/MouseEvent.java` | `addons/jediterm/core/input/mouse_event.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/core/input/MouseWheelEvent.java` | `addons/jediterm/core/input/mouse_wheel_event.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/core/Platform.kt` | `addons/jediterm/core/platform.gd` | present |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/core/TerminalCoordinates.java` | `addons/jediterm/core/terminal_coordinates.gd` | present |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/core/TerminalCoordinates.java` | `addons/jediterm/core/terminal_coordinates.gd` | present (stub) |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/core/typeahead/Debouncer.java` | `addons/jediterm/core/typeahead/debouncer.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/core/typeahead/TerminalTypeAheadManager.java` | `addons/jediterm/core/typeahead/terminal_type_ahead_manager.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/core/typeahead/TypeAheadTerminalModel.java` | `addons/jediterm/core/typeahead/type_ahead_terminal_model.gd` | present |
@@ -100,13 +125,13 @@ v1 当前事实基准：`docs/plan/v1-index.md` 的 suite 全绿（但并不意�
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/emulator/ColorPalette.java` | `addons/jediterm/terminal/emulator/color_palette.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/emulator/ColorPaletteImpl.java` | `addons/jediterm/terminal/emulator/color_palette_impl.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/emulator/ControlSequence.java` | `addons/jediterm/terminal/emulator/control_sequence.gd` | present |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/emulator/Emulator.java` | `addons/jediterm/terminal/emulator/emulator.gd` | present |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/emulator/Emulator.java` | `addons/jediterm/terminal/emulator/emulator.gd` | present (stub) |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/emulator/JediEmulator.java` | `addons/jediterm/terminal/emulator/jedi_emulator.gd` | present |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/emulator/mouse/MouseButtonCodes.java` | `addons/jediterm/terminal/emulator/mouse/mouse_button_codes.gd` | present |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/emulator/mouse/MouseButtonModifierFlags.java` | `addons/jediterm/terminal/emulator/mouse/mouse_button_modifier_flags.gd` | present |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/emulator/mouse/MouseFormat.java` | `addons/jediterm/terminal/emulator/mouse/mouse_format.gd` | present |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/emulator/mouse/MouseMode.java` | `addons/jediterm/terminal/emulator/mouse/mouse_mode.gd` | present |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/emulator/mouse/TerminalMouseListener.java` | `addons/jediterm/terminal/emulator/mouse/terminal_mouse_listener.gd` | present |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/emulator/mouse/MouseButtonCodes.java` | `addons/jediterm/terminal/emulator/mouse/mouse_button_codes.gd` | present (stub) |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/emulator/mouse/MouseButtonModifierFlags.java` | `addons/jediterm/terminal/emulator/mouse/mouse_button_modifier_flags.gd` | present (stub) |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/emulator/mouse/MouseFormat.java` | `addons/jediterm/terminal/emulator/mouse/mouse_format.gd` | present (stub) |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/emulator/mouse/MouseMode.java` | `addons/jediterm/terminal/emulator/mouse/mouse_mode.gd` | present (stub) |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/emulator/mouse/TerminalMouseListener.java` | `addons/jediterm/terminal/emulator/mouse/terminal_mouse_listener.gd` | present (stub) |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/emulator/SynchronizedOutput.kt` | `addons/jediterm/terminal/emulator/synchronized_output.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/emulator/SystemCommandSequence.kt` | `addons/jediterm/terminal/emulator/system_command_sequence.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/HyperlinkStyle.java` | `addons/jediterm/terminal/hyperlink_style.gd` | present |
@@ -114,7 +139,7 @@ v1 当前事实基准：`docs/plan/v1-index.md` 的 suite 全绿（但并不意�
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/CharBuffer.java` | `addons/jediterm/terminal/model/char_buffer.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/CyclicBufferLinesStorage.kt` | `addons/jediterm/terminal/model/cyclic_buffer_lines_storage.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/hyperlinks/AsyncHyperlinkFilter.kt` | `addons/jediterm/terminal/model/hyperlinks/async_hyperlink_filter.gd` | present |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/hyperlinks/HyperlinkFilter.java` | `addons/jediterm/terminal/model/hyperlinks/hyperlink_filter.gd` | present |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/hyperlinks/HyperlinkFilter.java` | `addons/jediterm/terminal/model/hyperlinks/hyperlink_filter.gd` | present (stub) |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/hyperlinks/LinkInfo.java` | `addons/jediterm/terminal/model/hyperlinks/link_info.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/hyperlinks/LinkResult.java` | `addons/jediterm/terminal/model/hyperlinks/link_result.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/hyperlinks/LinkResultItem.java` | `addons/jediterm/terminal/model/hyperlinks/link_result_item.gd` | present |
@@ -127,37 +152,37 @@ v1 当前事实基准：`docs/plan/v1-index.md` 的 suite 全绿（但并不意�
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/StoredCursor.java` | `addons/jediterm/terminal/model/stored_cursor.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/StyleState.java` | `addons/jediterm/terminal/model/style_state.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/SubCharBuffer.java` | `addons/jediterm/terminal/model/sub_char_buffer.gd` | present |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/Tabulator.java` | `addons/jediterm/terminal/model/tabulator.gd` | present |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalApplicationTitleListener.java` | `addons/jediterm/terminal/model/terminal_application_title_listener.gd` | present |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/Tabulator.java` | `addons/jediterm/terminal/model/tabulator.gd` | present (stub) |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalApplicationTitleListener.java` | `addons/jediterm/terminal/model/terminal_application_title_listener.gd` | present (stub) |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalHistoryBufferListener.kt` | `addons/jediterm/terminal/model/terminal_history_buffer_listener.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalHyperlinkListener.kt` | `addons/jediterm/terminal/model/terminal_hyperlink_listener.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalLine.java` | `addons/jediterm/terminal/model/terminal_line.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalLineIntervalHighlighting.java` | `addons/jediterm/terminal/model/terminal_line_interval_highlighting.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalLineUtil.kt` | `addons/jediterm/terminal/model/terminal_line_util.gd` | present |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalModelListener.java` | `addons/jediterm/terminal/model/terminal_model_listener.gd` | present |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalModelListener.java` | `addons/jediterm/terminal/model/terminal_model_listener.gd` | present (stub) |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalResizeListener.kt` | `addons/jediterm/terminal/model/terminal_resize_listener.gd` | present |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalResizeResult.kt` | `addons/jediterm/terminal/model/terminal_resize_result.gd` | present |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalResizeResult.kt` | `addons/jediterm/terminal/model/terminal_resize_result.gd` | present (stub) |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalSelection.java` | `addons/jediterm/terminal/model/terminal_selection.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalSelectionChangesListener.kt` | `addons/jediterm/terminal/model/terminal_selection_changes_listener.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalTextBuffer.kt` | `addons/jediterm/terminal/model/terminal_text_buffer.gd` | present |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalTextBufferResize.kt` | `addons/jediterm/terminal/model/terminal_text_buffer_resize.gd` | present |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalTextBufferResize.kt` | `addons/jediterm/terminal/model/terminal_text_buffer_resize.gd` | present (stub) |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TerminalTypeAheadSettings.java` | `addons/jediterm/terminal/model/terminal_type_ahead_settings.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TextBufferChangesListener.kt` | `addons/jediterm/terminal/model/text_buffer_changes_listener.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/TextBufferChangesMulticaster.kt` | `addons/jediterm/terminal/model/text_buffer_changes_multicaster.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/ProcessTtyConnector.java` | `addons/jediterm/terminal/process_tty_connector.gd` | present |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/Questioner.java` | `addons/jediterm/terminal/questioner.gd` | present |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/Questioner.java` | `addons/jediterm/terminal/questioner.gd` | present (stub) |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/RequestOrigin.java` | `addons/jediterm/terminal/request_origin.gd` | present |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/StyledTextConsumer.java` | `addons/jediterm/terminal/styled_text_consumer.gd` | present |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/StyledTextConsumer.java` | `addons/jediterm/terminal/styled_text_consumer.gd` | present (stub) |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/StyledTextConsumerAdapter.java` | `addons/jediterm/terminal/styled_text_consumer_adapter.gd` | present |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/Terminal.java` | `addons/jediterm/terminal/terminal.gd` | present |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/Terminal.java` | `addons/jediterm/terminal/terminal.gd` | present (stub) |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/TerminalColor.java` | `addons/jediterm/terminal/terminal_color.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/TerminalCustomCommandListener.java` | `addons/jediterm/terminal/terminal_custom_command_listener.gd` | present |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/TerminalDataStream.java` | `addons/jediterm/terminal/terminal_data_stream.gd` | present |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/TerminalDisplay.java` | `addons/jediterm/terminal/terminal_display.gd` | present |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/TerminalExecutorServiceManager.java` | `addons/jediterm/terminal/terminal_executor_service_manager.gd` | present |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/TerminalDataStream.java` | `addons/jediterm/terminal/terminal_data_stream.gd` | present (stub) |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/TerminalDisplay.java` | `addons/jediterm/terminal/terminal_display.gd` | present (stub) |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/TerminalExecutorServiceManager.java` | `addons/jediterm/terminal/terminal_executor_service_manager.gd` | present (stub) |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/TerminalKeyEncoder.java` | `addons/jediterm/terminal/terminal_key_encoder.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/TerminalMode.java` | `addons/jediterm/terminal/terminal_mode.gd` | present |
-| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/TerminalOutputStream.java` | `addons/jediterm/terminal/terminal_output_stream.gd` | present |
+| `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/TerminalOutputStream.java` | `addons/jediterm/terminal/terminal_output_stream.gd` | present (stub) |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/TerminalStarter.java` | `addons/jediterm/terminal/terminal_starter.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/TextStyle.java` | `addons/jediterm/terminal/text_style.gd` | present |
 | `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/TtyBasedArrayDataStream.java` | `addons/jediterm/terminal/tty_based_array_data_stream.gd` | present |
@@ -311,7 +336,7 @@ v1 当前事实基准：`docs/plan/v1-index.md` 的 suite 全绿（但并不意�
 ### `addons/jediterm/terminal/model/jedi_terminal.gd`
 - Upstream: `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/model/JediTerminal.java`
 - Missing upstream methods: 0
-- Extra target funcs: 15
+- Extra target funcs: 16
   - `begin_osc8_hyperlink`
   - `cursor_vertical_absolute`
   - `end_osc8_hyperlink`
@@ -320,6 +345,7 @@ v1 当前事实基准：`docs/plan/v1-index.md` 的 suite 全绿（但并不意�
   - `get_height`
   - `get_output_and_clear`
   - `get_width`
+  - `removeCustomCommandListener`
   - `reset_to_initial_state`
   - `send_output`
   - `set_current_style`
@@ -394,6 +420,12 @@ v1 当前事实基准：`docs/plan/v1-index.md` 的 suite 全绿（但并不意�
   - `track_point`
   - `untrack_point`
   - `write_codepoint`
+
+### `addons/jediterm/terminal/terminal_custom_command_listener.gd`
+- Upstream: `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/TerminalCustomCommandListener.java`
+- Missing upstream methods: 0
+- Extra target funcs: 1
+  - `process`
 
 ### `addons/jediterm/terminal/text_style.gd`
 - Upstream: `refs/jediterm-android/lib/src/main/java/com/jediterm/terminal/TextStyle.java`

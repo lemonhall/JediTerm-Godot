@@ -423,7 +423,30 @@ func _handle_osc(terminal: RefCounted, content: String, terminator: String) -> v
 				terminal.begin_osc8_hyperlink(uri)
 		return
 
+	if code == 1341:
+		# Upstream: `JediEmulator` forwards OSC 1341 args (excluding the `1341` itself)
+		# to `Terminal.processCustomCommand(List<String>)`.
+		if terminal.has_method("processCustomCommand"):
+			terminal.processCustomCommand(_split_osc_args(data))
+		return
+
 	# Other OSC: ignore.
+
+func _split_osc_args(data: String) -> Array[String]:
+	# Keep empty segments.
+	if data == "":
+		return []
+	var out: Array[String] = []
+	var current := ""
+	for i in data.length():
+		var ch := data.substr(i, 1)
+		if ch == ";":
+			out.append(current)
+			current = ""
+		else:
+			current += ch
+	out.append(current)
+	return out
 
 func _rgb16(v: int) -> String:
 	var vv := clampi(v, 0, 255)

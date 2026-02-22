@@ -50,6 +50,25 @@ def _gd_public_funcs(text: str) -> list[str]:
     return public
 
 
+def _gd_meaningful_line_count(text: str) -> int:
+    count = 0
+    for line in text.splitlines():
+        s = line.strip()
+        if not s:
+            continue
+        if s.startswith("#"):
+            continue
+        if s.startswith(("extends ", "class_name ", "@tool")):
+            continue
+        count += 1
+    return count
+
+
+def _gd_is_stub_script(text: str) -> bool:
+    # Heuristic: scripts that only contain `extends` (plus whitespace/comments) are stubs.
+    return _gd_meaningful_line_count(text) == 0
+
+
 def _java_public_methods(text: str, class_name: str) -> list[str]:
     methods: set[str] = set()
     for m in re.finditer(
@@ -240,7 +259,7 @@ def _print_header(repo_root: Path) -> None:
     print("")
 
 
-def _print_file_level(pairs: list[Pair], gd_file_count: int) -> None:
+def _print_file_level(repo_root: Path, pairs: list[Pair], gd_file_count: int) -> None:
     total = len(pairs)
     matched = sum(1 for p in pairs if p.target_rel is not None)
     missing = total - matched
@@ -263,6 +282,9 @@ def _print_file_level(pairs: list[Pair], gd_file_count: int) -> None:
             status = "present"
             if len(p.target_candidates) > 1:
                 status = "present (ambiguous)"
+            target_path = repo_root / Path(p.target_rel)
+            if target_path.exists() and _gd_is_stub_script(_read_text(target_path)):
+                status = status.replace("present", "present (stub)")
             print(f"| `{p.upstream_rel}` | `{p.target_rel}` | {status} |")
     print("")
 
@@ -337,6 +359,7 @@ def _collect_gap_stats(
     missing_methods_missing_only_total = 0
     elsewhere_hits_total = 0
     elsewhere_hits_p1_total = 0
+    stub_targets: list[str] = []
     area_p1: dict[str, int] = {}
     top_by_p1: list[tuple[str, int, str | None]] = []
 
@@ -344,7 +367,10 @@ def _collect_gap_stats(
         upstream_path = repo_root / Path(p.upstream_rel)
         target_path = repo_root / Path(p.target_rel)
         upstream_methods = _extract_upstream_public_methods(upstream_path)
-        target_funcs = _gd_public_funcs(_read_text(target_path))
+        target_text = _read_text(target_path)
+        target_funcs = _gd_public_funcs(target_text)
+        if _gd_is_stub_script(target_text):
+            stub_targets.append(p.target_rel)
 
         upstream_norm: set[str] = set()
         for m in upstream_methods:
@@ -409,6 +435,7 @@ def _collect_gap_stats(
     stats["extra_funcs_total"] = extra_funcs_total
     stats["elsewhere_hits_total"] = elsewhere_hits_total
     stats["elsewhere_hits_p1_total"] = elsewhere_hits_p1_total
+    stats["stub_targets"] = sorted(set(stub_targets))
     stats["area_p1"] = area_p1
     stats["top_by_p1"] = sorted(top_by_p1, key=lambda x: x[1], reverse=True)
     return stats
@@ -428,6 +455,7 @@ def _print_summary(
     extra_funcs_total = int(stats["extra_funcs_total"])  # type: ignore[arg-type]
     elsewhere_hits_total = int(stats["elsewhere_hits_total"])  # type: ignore[arg-type]
     elsewhere_hits_p1_total = int(stats["elsewhere_hits_p1_total"])  # type: ignore[arg-type]
+    stub_targets = stats["stub_targets"]  # type: ignore[assignment]
     area_p1 = stats["area_p1"]  # type: ignore[assignment]
     top_by_p1 = stats["top_by_p1"]  # type: ignore[assignment]
 
@@ -450,7 +478,17 @@ def _print_summary(
         f"P1={prio_counts_missing_only['P1']}, P2={prio_counts_missing_only['P2']}, P3={prio_counts_missing_only['P3']}"
     )
     print(f"- elsewhere 命中：{elsewhere_hits_total}（其中 P1：{elsewhere_hits_p1_total}）")
+    print(f"- 疑似 stub 目标脚本：{len(stub_targets)}（仅 `extends`/空壳）")
     print("")
+
+    if stub_targets:
+        print("### Stub 目标脚本（优先补齐实现/契约）")
+        print("")
+        for t in stub_targets[:30]:
+            print(f"- `{t}`")
+        if len(stub_targets) > 30:
+            print(f"- ...（+{len(stub_targets) - 30}）")
+        print("")
 
     print("### Top 缺口（按 P1 数量）")
     print("")
@@ -599,7 +637,7 @@ def main() -> int:
 
     _print_header(repo_root)
     _print_summary(repo_root, pairs, gd_file_count, target_func_index)
-    _print_file_level(pairs, gd_file_count)
+    _print_file_level(repo_root, pairs, gd_file_count)
     _print_known_divergences(repo_root, matched_by_target)
     _print_api_gaps(repo_root, pairs, target_func_index)
 

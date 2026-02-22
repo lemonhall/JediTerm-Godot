@@ -100,14 +100,45 @@ func removeResizeListener(listener) -> void:
 func addCustomCommandListener(listener) -> void:
 	_custom_command_listeners.append(listener)
 
-func processCustomCommand(command: String) -> void:
+func removeCustomCommandListener(listener) -> void:
+	_custom_command_listeners.erase(listener)
+
+func processCustomCommand(command_or_args) -> void:
+	var args: Array = []
+	if command_or_args is Array:
+		args = command_or_args
+	elif command_or_args is PackedStringArray:
+		args = Array(command_or_args)
+	else:
+		var command_str := String(command_or_args)
+		if command_str != "":
+			args = _split_custom_command_string(command_str)
+
+	var command := ";".join(args) if args.size() > 0 else ""
+
 	for listener in _custom_command_listeners:
 		if listener == null:
 			continue
-		if listener.has_method("processCustomCommand"):
+		if listener.has_method("process"):
+			listener.process(args)
+		elif listener.has_method("processCustomCommand"):
 			listener.processCustomCommand(command)
 		elif listener.has_method("onCustomCommand"):
 			listener.onCustomCommand(command)
+
+func _split_custom_command_string(s: String) -> Array[String]:
+	# Keep empty segments to match upstream OSC parsing behavior.
+	var out: Array[String] = []
+	var current := ""
+	for i in s.length():
+		var ch := s.substr(i, 1)
+		if ch == ";":
+			out.append(current)
+			current = ""
+		else:
+			current += ch
+	out.append(current)
+	return out
 
 func getTerminalWidth() -> int:
 	return get_width()
