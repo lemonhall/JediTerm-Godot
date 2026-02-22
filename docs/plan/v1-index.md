@@ -77,4 +77,5 @@
 
 - 当前 M1~M9 已完成：核心 suite（含 Emulator + vttest）可在 Godot headless 下跑通。
 - 当前 M1~M10 已完成：核心 suite（含 Hyperlinks/TypeAhead）可在 Godot headless 下跑通。
+- vttest 1:1 + Unicode 宽字符兜底：见 `docs/plan/v1-vttest-unicode-guardrails.md`。
 - 下一阶段：补齐剩余 harness（如 `emulator_test_base.gd`、超链接过滤器测试替身等），以及把 TypeAhead/Hyperlinks 与终端交互层进一步对齐（如需要）。

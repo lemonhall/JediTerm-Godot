@@ -1,6 +1,7 @@
 extends RefCounted
 
 const CharBuffer := preload("res://addons/jediterm/terminal/model/char_buffer.gd")
+const CharUtils := preload("res://addons/jediterm/terminal/util/char_utils.gd")
 const TextStyle := preload("res://addons/jediterm/terminal/text_style.gd")
 const TerminalLine := preload("res://addons/jediterm/terminal/model/terminal_line.gd")
 const LinesStorage := preload("res://addons/jediterm/terminal/model/cyclic_buffer_lines_storage.gd")
@@ -720,21 +721,7 @@ func _reflow_add_text(state: Dictionary, text: String, wrapped: bool, new_width:
 		_reflow_close_line(state)
 
 static func is_double_width_codepoint(cp: int) -> bool:
-	if cp == DWC or cp <= 0xA0:
-		return false
-	# Approximate wcwidth==2 for the ranges used in upstream CharUtils.
-	if (cp >= 0x1100 and cp <= 0x115F) \
-		or (cp >= 0x2E80 and cp <= 0xA4CF and cp != 0x303F) \
-		or (cp >= 0xAC00 and cp <= 0xD7A3) \
-		or (cp >= 0xF900 and cp <= 0xFAFF) \
-		or (cp >= 0xFE10 and cp <= 0xFE19) \
-		or (cp >= 0xFE30 and cp <= 0xFE6F) \
-		or (cp >= 0xFF00 and cp <= 0xFF60) \
-		or (cp >= 0xFFE0 and cp <= 0xFFE6) \
-		or (cp >= 0x20000 and cp <= 0x2FFFD) \
-		or (cp >= 0x30000 and cp <= 0x3FFFD):
-		return true
-	return false
+	return CharUtils.isDoubleWidthCharacter(cp, false)
 
 func _make_blank_screen() -> Array:
 	var screen: Array = []
