@@ -2,6 +2,51 @@ extends RefCounted
 
 # Minimal color utilities for v1 StyledTextTest.
 
+static func TerminalColor(a, b = null, c = null):
+	# Factory helper to mimic upstream TerminalColor constructors:
+	# - TerminalColor(colorIndex)
+	# - TerminalColor(r, g, b)
+	if b == null and c == null:
+		return index(int(a))
+	if b != null and c != null:
+		return rgb(int(a), int(b), int(c))
+	return index(int(a))
+
+static func fromColor(color):
+	if color == null:
+		return null
+	if color is Color:
+		return rgb(int(color.r8), int(color.g8), int(color.b8))
+	return null
+
+static func isIndexed(_color_value) -> bool:
+	# Current v1 representation normalizes to RGB dictionaries, losing the index.
+	return false
+
+static func getColorIndex(_color_value) -> int:
+	# Current v1 representation normalizes to RGB dictionaries, losing the index.
+	return -1
+
+static func toColor(color_value) -> Color:
+	if color_value == null:
+		return Color(0, 0, 0, 0)
+	if typeof(color_value) != TYPE_DICTIONARY:
+		return Color(0, 0, 0, 0)
+	return Color8(
+		int(color_value.get("r", 0)),
+		int(color_value.get("g", 0)),
+		int(color_value.get("b", 0)),
+		255
+	)
+
+static func equals(a, b) -> bool:
+	return a == b
+
+static func hashCode(value) -> int:
+	if value == null:
+		return 0
+	return int(value.hash())
+
 static func rgb(r: int, g: int, b: int) -> Dictionary:
 	return {
 		"r": clampi(int(r), 0, 255),
@@ -51,4 +96,3 @@ static func _xterm_256_to_rgb(i: int) -> Dictionary:
 	# grayscale 232..255
 	var gray := 8 + (i - 232) * 10
 	return rgb(gray, gray, gray)
-

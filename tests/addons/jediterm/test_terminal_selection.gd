@@ -30,6 +30,9 @@ func _init() -> void:
 	if not _test_cons_rows(SelectionScript):
 		return
 
+	if not _test_api_methods(SelectionScript):
+		return
+
 	T.pass_and_quit(self)
 
 func _do_test(intersection, x: int, length: int) -> bool:
@@ -78,3 +81,39 @@ func _test_cons_rows(SelectionScript) -> bool:
 	var s = SelectionScript.new(Point.new(5, 2), Point.new(5, 3))
 	return _do_test(s.intersect(0, 2, 20), 5, 15)
 
+func _test_api_methods(SelectionScript) -> bool:
+	var s = SelectionScript.new(Point.new(2, 1), Point.new(4, 1))
+
+	if not T.require_true(self, s.getStart().x == 2 and s.getStart().y == 1, "getStart"):
+		return false
+	if not T.require_true(self, s.getEnd().x == 4 and s.getEnd().y == 1, "getEnd"):
+		return false
+
+	if not T.require_true(self, s.contains(Point.new(3, 1)), "contains"):
+		return false
+	if not T.require_true(self, not s.contains(Point.new(1, 1)), "contains out"):
+		return false
+
+	if not T.require_true(self, s.intersects(3, 1, 1), "intersects"):
+		return false
+	if not T.require_true(self, not s.intersects(1, 1, 1), "intersects out"):
+		return false
+
+	var run_points = s.pointsForRun(10)
+	if not T.require_true(self, run_points is Array and run_points.size() == 2, "pointsForRun shape"):
+		return false
+	if not T.require_true(self, run_points[0].x == 2 and run_points[1].x == 5, "pointsForRun x"):
+		return false
+
+	s.updateEnd(Point.new(6, 1))
+	if not T.require_true(self, s.getEnd().x == 6, "updateEnd"):
+		return false
+
+	s.shiftY(2)
+	if not T.require_true(self, s.getStart().y == 3 and s.getEnd().y == 3, "shiftY"):
+		return false
+
+	if not T.require_true(self, s.toString() == "[x=2,y=3] -> [x=6,y=3]", "toString"):
+		return false
+
+	return true

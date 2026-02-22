@@ -6,3 +6,6 @@ refs/*
 .godot/
 .godot-user/
 
+# Python caches
+__pycache__/
+*.pyc

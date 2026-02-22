@@ -1,6 +1,7 @@
 extends RefCounted
 
 const Point := preload("res://addons/jediterm/core/compatibility/point.gd")
+const SelectionUtil := preload("res://addons/jediterm/terminal/model/selection_util.gd")
 
 var start: RefCounted
 var end: RefCounted
@@ -8,6 +9,43 @@ var end: RefCounted
 func _init(p_start: RefCounted, p_end: RefCounted) -> void:
 	start = p_start
 	end = p_end
+
+func getStart() -> RefCounted:
+	return start
+
+func getEnd() -> RefCounted:
+	return end
+
+func updateEnd(p_end: RefCounted) -> void:
+	end = p_end
+
+func pointsForRun(width: int) -> Array:
+	var s: Point = Point.new(int(start.x), int(start.y))
+	var e: Point = Point.new(int(end.x), int(end.y))
+	var points := SelectionUtil.sortPoints(s, e)
+	var out_s: Point = points[0]
+	var out_e: Point = points[1]
+	out_e.x = mini(out_e.x + 1, int(width))
+	return [out_s, out_e]
+
+func contains(to_test: RefCounted) -> bool:
+	if to_test == null:
+		return false
+	return intersects(int(to_test.x), int(to_test.y), 1)
+
+func shiftY(dy: int) -> void:
+	if start != null:
+		start.y += int(dy)
+	if end != null:
+		end.y += int(dy)
+
+func intersects(x: int, row: int, length: int) -> bool:
+	return intersect(x, row, length) != null
+
+func toString() -> String:
+	var s: Point = start
+	var e: Point = end
+	return "[x=%s,y=%s] -> [x=%s,y=%s]" % [str(s.x), str(s.y), str(e.x), str(e.y)]
 
 func _sorted_points() -> Array:
 	var s: Point = start

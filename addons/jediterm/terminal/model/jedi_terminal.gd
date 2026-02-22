@@ -3,10 +3,12 @@ extends RefCounted
 const TerminalTextBuffer := preload("res://addons/jediterm/terminal/model/terminal_text_buffer.gd")
 const TerminalMode := preload("res://addons/jediterm/terminal/terminal_mode.gd")
 const TermSize := preload("res://addons/jediterm/core/util/term_size.gd")
+const TerminalKeyEncoder := preload("res://addons/jediterm/terminal/terminal_key_encoder.gd")
 const TextStyle := preload("res://addons/jediterm/terminal/text_style.gd")
 const HyperlinkStyle := preload("res://addons/jediterm/terminal/hyperlink_style.gd")
 
 const MIN_WIDTH := 5
+const MIN_HEIGHT := 2
 
 var _display: RefCounted
 var _text_buffer: RefCounted
@@ -30,15 +32,151 @@ var _url_hyperlink_filter
 var _osc8_active: bool = false
 var _osc8_prev_style: Dictionary = {}
 
+var _terminal_key_encoder: RefCounted
+var _application_title_listeners: Array = []
+var _resize_listeners: Array = []
+var _window_titles_stack: Array[String] = []
+var _terminal_output = null
+var _auto_new_line: bool = false
+var _application_arrow_keys: bool = false
+var _application_keypad: bool = false
+
 func _init(display: RefCounted, text_buffer: RefCounted, state: RefCounted) -> void:
 	_display = display
 	_text_buffer = text_buffer
 	_style_state = state
+	_terminal_key_encoder = TerminalKeyEncoder.new()
 	_scroll_top = 0
 	_scroll_bottom = maxi(0, _text_buffer.get_height() - 1)
 	_modes[TerminalMode.AutoWrap] = true
 	_modes[TerminalMode.Origin] = false
 	_reset_tab_stops()
+	setAutoNewLine(false)
+
+static func ensureTermMinimumSize(termSize: RefCounted) -> RefCounted:
+	if termSize == null:
+		return TermSize.new(MIN_WIDTH, MIN_HEIGHT)
+	return TermSize.new(maxi(MIN_WIDTH, int(termSize.columns)), maxi(MIN_HEIGHT, int(termSize.rows)))
+
+func addApplicationTitleListener(listener) -> void:
+	_application_title_listeners.append(listener)
+
+func removeApplicationTitleListener(listener) -> void:
+	_application_title_listeners.erase(listener)
+
+func setWindowTitle(name: String) -> void:
+	_change_application_title(name)
+
+func _change_application_title(new_title: String) -> void:
+	for listener in _application_title_listeners:
+		if listener != null and listener.has_method("onApplicationTitleChanged"):
+			listener.onApplicationTitleChanged(new_title)
+	if _display != null and _display.has_method("set_window_title"):
+		_display.set_window_title(new_title)
+
+func saveWindowTitleOnStack() -> void:
+	var title := ""
+	if _display != null and _display.has_method("get_window_title"):
+		title = String(_display.get_window_title())
+	_window_titles_stack.append(title)
+
+func restoreWindowTitleFromStack() -> void:
+	if _window_titles_stack.is_empty():
+		return
+	_change_application_title(String(_window_titles_stack.pop_back()))
+
+func addResizeListener(listener) -> void:
+	_resize_listeners.append(listener)
+
+func removeResizeListener(listener) -> void:
+	_resize_listeners.erase(listener)
+
+func getTerminalWidth() -> int:
+	return get_width()
+
+func getTerminalHeight() -> int:
+	return get_height()
+
+func getSize() -> RefCounted:
+	return TermSize.new(get_width(), get_height())
+
+func getX() -> int:
+	return get_cursor_x()
+
+func getY() -> int:
+	return get_cursor_y()
+
+func setX(x: int) -> void:
+	cursor_position(x, get_cursor_y())
+
+func setY(y: int) -> void:
+	cursor_position(get_cursor_x(), y)
+
+func getStyleState() -> RefCounted:
+	return _style_state
+
+func isAutoNewLine() -> bool:
+	return _auto_new_line
+
+func setAutoNewLine(enabled: bool) -> void:
+	_auto_new_line = enabled
+	if _terminal_key_encoder != null and _terminal_key_encoder.has_method("setAutoNewLine"):
+		_terminal_key_encoder.setAutoNewLine(enabled)
+
+func setAltSendsEscape(enabled: bool) -> void:
+	if _terminal_key_encoder != null and _terminal_key_encoder.has_method("setAltSendsEscape"):
+		_terminal_key_encoder.setAltSendsEscape(enabled)
+
+func setApplicationArrowKeys(enabled: bool) -> void:
+	_application_arrow_keys = enabled
+	if _terminal_key_encoder == null:
+		return
+	if enabled and _terminal_key_encoder.has_method("arrowKeysApplicationSequences"):
+		_terminal_key_encoder.arrowKeysApplicationSequences()
+	elif (not enabled) and _terminal_key_encoder.has_method("arrowKeysAnsiCursorSequences"):
+		_terminal_key_encoder.arrowKeysAnsiCursorSequences()
+
+func setApplicationKeypad(enabled: bool) -> void:
+	_application_keypad = enabled
+	if _terminal_key_encoder == null:
+		return
+	if enabled and _terminal_key_encoder.has_method("keypadApplicationSequences"):
+		_terminal_key_encoder.keypadApplicationSequences()
+	elif (not enabled) and _terminal_key_encoder.has_method("keypadAnsiSequences"):
+		_terminal_key_encoder.keypadAnsiSequences()
+
+func getCodeForKey(key: int, modifiers: int) -> PackedByteArray:
+	if _terminal_key_encoder == null:
+		return PackedByteArray()
+	if _terminal_key_encoder.has_method("get_code"):
+		return PackedByteArray(_terminal_key_encoder.get_code(key, modifiers))
+	if _terminal_key_encoder.has_method("getCode"):
+		return PackedByteArray(_terminal_key_encoder.getCode(key, modifiers))
+	return PackedByteArray()
+
+func cursorShape() -> int:
+	if _display != null and _display.has_method("get_cursor_shape"):
+		return int(_display.get_cursor_shape())
+	return 0
+
+func getWindowForeground() -> Dictionary:
+	if _display != null and _display.has_method("get_window_foreground_rgb"):
+		return Dictionary(_display.get_window_foreground_rgb())
+	return {}
+
+func getWindowBackground() -> Dictionary:
+	if _display != null and _display.has_method("get_window_background_rgb"):
+		return Dictionary(_display.get_window_background_rgb())
+	return {}
+
+func setTerminalOutput(output) -> void:
+	_terminal_output = output
+
+func writeCharacters(s: String) -> void:
+	write_string(s)
+
+func writeString(s: String) -> void:
+	write_string(s)
 
 func set_text_processing(text_processing: RefCounted) -> void:
 	_text_processing = text_processing
@@ -212,6 +350,54 @@ func crnl() -> void:
 	carriage_return()
 	new_line()
 
+func ambiguousCharsAreDoubleWidth() -> bool:
+	return false
+
+func beep() -> void:
+	pass
+
+func disconnected() -> void:
+	if _display != null and _display.has_method("set_cursor_visible"):
+		_display.set_cursor_visible(false)
+
+func clearScreen() -> void:
+	if _text_buffer != null and _text_buffer.has_method("clear_screen_only"):
+		_text_buffer.clear_screen_only()
+	elif _text_buffer != null and _text_buffer.has_method("erase_in_display"):
+		_text_buffer.erase_in_display(2, _cursor_x, _cursor_y)
+
+func clearLines() -> void:
+	clearScreen()
+
+func fillScreen(c) -> void:
+	if _text_buffer == null or not _text_buffer.has_method("write_codepoint"):
+		return
+	var w := int(_text_buffer.get_width())
+	var h := int(_text_buffer.get_height())
+	if w <= 0 or h <= 0:
+		return
+	var cp := 0
+	if c is int:
+		cp = int(c)
+	elif c is String and String(c).length() > 0:
+		cp = int(String(c).unicode_at(0))
+	else:
+		cp = int(" ".unicode_at(0))
+	var style := get_current_style()
+	for y in h:
+		for x in w:
+			_text_buffer.write_codepoint(x, y, cp, style)
+
+func nextLine() -> void:
+	crnl()
+
+func scrollY() -> void:
+	_scroll_y()
+
+func resetScrollRegions() -> void:
+	_scroll_top = 0
+	_scroll_bottom = maxi(0, _text_buffer.get_height() - 1)
+
 func use_alternate_buffer(enabled: bool) -> void:
 	if enabled == _using_alt:
 		return
@@ -266,6 +452,56 @@ func tab() -> void:
 			return
 	# No more tab stops: go to last column.
 	_cursor_x = w - 1
+
+func horizontalTab() -> void:
+	tab()
+
+func nextTab(position: int) -> int:
+	var w := int(_text_buffer.get_width())
+	if w <= 0:
+		return 0
+	_ensure_tab_stops(w)
+	position = clampi(position, 0, w - 1)
+	for col in range(position + 1, w):
+		if col < _tab_stops.size() and _tab_stops[col] == 1:
+			return col
+	return w - 1
+
+func previousTab(position: int) -> int:
+	var w := int(_text_buffer.get_width())
+	if w <= 0:
+		return 0
+	_ensure_tab_stops(w)
+	position = clampi(position, 0, w - 1)
+	for col in range(position - 1, -1, -1):
+		if col < _tab_stops.size() and _tab_stops[col] == 1:
+			return col
+	return 0
+
+func getNextTabWidth(position: int) -> int:
+	return nextTab(position) - position
+
+func getPreviousTabWidth(position: int) -> int:
+	return position - previousTab(position)
+
+func setTabStopAtCursor() -> void:
+	set_horizontal_tab_stop()
+
+func setTabStop(position: int) -> void:
+	var w := int(_text_buffer.get_width())
+	if w <= 0:
+		return
+	_ensure_tab_stops(w)
+	position = clampi(position, 0, w - 1)
+	_tab_stops[position] = 1
+
+func clearTabStop(position: int) -> void:
+	var w := int(_text_buffer.get_width())
+	if w <= 0:
+		return
+	_ensure_tab_stops(w)
+	position = clampi(position, 0, w - 1)
+	_tab_stops[position] = 0
 
 func set_horizontal_tab_stop() -> void:
 	var w := int(_text_buffer.get_width())
@@ -471,8 +707,15 @@ func _scroll_y() -> void:
 func resize(new_term_size: RefCounted, _origin) -> void:
 	if new_term_size == null:
 		return
-	var new_w := maxi(MIN_WIDTH, int(new_term_size.columns))
-	var new_h := int(new_term_size.rows)
+	var ensured: RefCounted = ensureTermMinimumSize(new_term_size)
+	var old_w := get_width()
+	var old_h := get_height()
+	var new_w := int(ensured.columns)
+	var new_h := int(ensured.rows)
+	if new_w == old_w and new_h == old_h:
+		return
+
+	var old_size := TermSize.new(old_w, old_h)
 	var res: Dictionary = {}
 	if _using_alt and _text_buffer != null and _text_buffer.has_method("resize_with_main_cursor") and _saved_main_state.has("cursor_x") and _saved_main_state.has("cursor_y"):
 		var main_cx1 := int(_saved_main_state.cursor_x) + 1
@@ -491,3 +734,8 @@ func resize(new_term_size: RefCounted, _origin) -> void:
 	_scroll_top = 0
 	_scroll_bottom = maxi(0, _text_buffer.get_height() - 1)
 	_ensure_tab_stops(int(_text_buffer.get_width()))
+
+	var new_size := TermSize.new(get_width(), get_height())
+	for listener in _resize_listeners:
+		if listener != null and listener.has_method("onResize"):
+			listener.onResize(old_size, new_size)

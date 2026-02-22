@@ -6,7 +6,54 @@ const HyperlinkStyle := preload("res://addons/jediterm/terminal/hyperlink_style.
 const MAX_RESCHEDULING_ATTEMPTS := 5
 
 var _hyperlink_filters: Array = []
+var _hyperlink_listeners: Array = []
 var _terminal_text_buffer: RefCounted
+var _hyperlink_color: Dictionary = {}
+var _highlight_mode = null
+
+class _ImmediateFuture:
+	extends RefCounted
+	var _value = null
+
+	func _init(value = null) -> void:
+		_value = value
+
+	func when_complete(cb: Callable) -> void:
+		cb.call(_value, null)
+
+	func get_now(_default_value):
+		return _value
+
+class _SyncFilterAdapter:
+	extends RefCounted
+	var _delegate = null
+
+	func _init(delegate) -> void:
+		_delegate = delegate
+
+	func apply(line_info):
+		var line_str := ""
+		if line_info != null:
+			if typeof(line_info) == TYPE_DICTIONARY:
+				if line_info.has("get_line") and line_info.get("get_line") is Callable:
+					line_str = String(line_info.get("get_line").call())
+			elif line_info.has_method("get_line"):
+				line_str = String(line_info.get_line())
+		if line_str == "":
+			return _ImmediateFuture.new(null)
+		if _delegate == null or not _delegate.has_method("apply"):
+			return _ImmediateFuture.new(null)
+		return _ImmediateFuture.new(_delegate.apply(line_str))
+
+static func _line_info_to_line(line_info) -> String:
+	if line_info == null:
+		return ""
+	if typeof(line_info) == TYPE_DICTIONARY:
+		if line_info.has("get_line") and line_info.get("get_line") is Callable:
+			return String(line_info.get("get_line").call())
+	if line_info.has_method("get_line"):
+		return String(line_info.get_line())
+	return ""
 
 class LineInfo:
 	extends RefCounted
@@ -31,8 +78,64 @@ class LineInfo:
 func set_terminal_text_buffer(terminal_text_buffer: RefCounted) -> void:
 	_terminal_text_buffer = terminal_text_buffer
 
+func setTerminalTextBuffer(terminalTextBuffer: RefCounted) -> void:
+	set_terminal_text_buffer(terminalTextBuffer)
+
 func add_async_hyperlink_filter(filter) -> void:
 	_hyperlink_filters.append(filter)
+
+func addAsyncHyperlinkFilter(filter) -> void:
+	add_async_hyperlink_filter(filter)
+
+func addHyperlinkFilter(filter) -> void:
+	_hyperlink_filters.append(_SyncFilterAdapter.new(filter))
+
+func addHyperlinkListener(listener) -> void:
+	_hyperlink_listeners.append(listener)
+
+func _fire_hyperlinks_changed() -> void:
+	for listener in _hyperlink_listeners:
+		if listener != null and listener.has_method("hyperlinksChanged"):
+			listener.hyperlinksChanged()
+
+func processHyperlinks(_linesStorage = null, _updatedLine = null) -> void:
+	process_all()
+
+func apply() -> void:
+	process_all()
+
+func applyFilter(line: String) -> Array:
+	var items: Array = []
+	for filter in _hyperlink_filters:
+		if filter == null or not filter.has_method("apply"):
+			continue
+		var fut = filter.apply({"get_line": func(): return line})
+		var result = null
+		if fut == null:
+			continue
+		if typeof(fut) == TYPE_DICTIONARY:
+			result = fut
+		elif fut.has_method("get_now"):
+			result = fut.get_now(null)
+		if result == null:
+			continue
+		if typeof(result) == TYPE_DICTIONARY:
+			items.append_array(Array(result.get("items", [])))
+		elif result.has_method("get_items"):
+			items.append_array(Array(result.get_items()))
+	return items
+
+func linesDiscardedFromHistory(_lines) -> void:
+	pass
+
+func historyCleared() -> void:
+	pass
+
+func widthResized() -> void:
+	pass
+
+func linesChanged(_fromIndex: int) -> void:
+	pass
 
 func process_all() -> void:
 	if _terminal_text_buffer == null:
@@ -102,6 +205,7 @@ func _apply_link_results(selection_ys: Array[int], terminal_width: int, line_str
 	if _terminal_text_buffer == null:
 		return
 	var hyperlink_style := HyperlinkStyle.make()
+	var link_added := false
 
 	for item in items:
 		var start_offset := int(item.get("start_offset", -1)) if typeof(item) == TYPE_DICTIONARY else int(item.start_offset)
@@ -117,7 +221,10 @@ func _apply_link_results(selection_ys: Array[int], terminal_width: int, line_str
 				var local_start := start_line_offset - prev_lines_length
 				var local_end := end_line_offset - prev_lines_length
 				_apply_style_range_to_selection_line(int(selection_y), int(local_start), int(local_end), hyperlink_style)
+				link_added = true
 			prev_lines_length += terminal_width
+	if link_added:
+		_fire_hyperlinks_changed()
 
 func _apply_style_range_to_selection_line(selection_y: int, x_from: int, x_to_exclusive: int, style: Dictionary) -> void:
 	if _terminal_text_buffer == null:
@@ -164,4 +271,3 @@ func _join_lines(selection_ys: Array[int], terminal_width: int) -> String:
 		if not is_last and text.length() < terminal_width:
 			out += " ".repeat(terminal_width - text.length())
 	return out
-

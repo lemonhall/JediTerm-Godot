@@ -3,6 +3,19 @@ extends RefCounted
 const Point := preload("res://addons/jediterm/core/compatibility/point.gd")
 const TerminalTextBuffer := preload("res://addons/jediterm/terminal/model/terminal_text_buffer.gd")
 
+static func sortPoints(a: RefCounted, b: RefCounted) -> Array:
+	if a == null or b == null:
+		return [a, b]
+
+	var ax := int(a.x)
+	var ay := int(a.y)
+	var bx := int(b.x)
+	var by := int(b.y)
+
+	if ay > by or (ay == by and ax > bx):
+		return [b, a]
+	return [a, b]
+
 static func get_selection_text(start: RefCounted, end: RefCounted, buffer: RefCounted) -> String:
 	if buffer == null:
 		return ""
