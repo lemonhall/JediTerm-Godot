@@ -42,6 +42,9 @@ var _debug_last_consumed_keycode: int = -1
 var _selection: RefCounted = null
 var _is_selecting: bool = false
 var _last_selection_cell: Vector2i = Vector2i(-1, -1)
+var _ime_active_requested: bool = false
+var _ime_last_cursor_cell: Vector2i = Vector2i(-9999, -9999)
+var _ime_last_position: Vector2i = Vector2i(-9999, -9999)
 
 func _init() -> void:
 	focus_mode = Control.FOCUS_ALL
@@ -53,6 +56,11 @@ func _ready() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_THEME_CHANGED and auto_cell_metrics:
 		_update_cell_metrics()
+	elif what == NOTIFICATION_FOCUS_ENTER:
+		_set_ime_active_requested(true)
+		_update_ime_position(true)
+	elif what == NOTIFICATION_FOCUS_EXIT:
+		_set_ime_active_requested(false)
 
 func set_text_buffer(text_buffer: RefCounted) -> void:
 	_text_buffer = text_buffer
@@ -83,13 +91,12 @@ func set_terminal_font(font: Font, font_size: int = 0) -> void:
 	_request_redraw()
 
 func _process(_delta: float) -> void:
-	if _text_buffer == null:
-		return
-	if not bool(_text_buffer.has_method("consume_dirty_rows")):
-		return
-	var dirty: PackedInt32Array = PackedInt32Array(_text_buffer.consume_dirty_rows())
-	if int(dirty.size()) > 0:
-		_request_redraw()
+	if _text_buffer != null and bool(_text_buffer.has_method("consume_dirty_rows")):
+		var dirty: PackedInt32Array = PackedInt32Array(_text_buffer.consume_dirty_rows())
+		if int(dirty.size()) > 0:
+			_request_redraw()
+	if has_focus():
+		_update_ime_position(false)
 
 func _request_redraw() -> void:
 	_debug_redraw_request_count += 1
@@ -103,6 +110,9 @@ func _debug_get_redraw_request_count() -> int:
 
 func _debug_get_last_consumed_keycode() -> int:
 	return int(_debug_last_consumed_keycode)
+
+func _debug_get_ime_active_requested() -> bool:
+	return bool(_ime_active_requested)
 
 func build_draw_plan() -> RefCounted:
 	var snap := RenderSnapshot.new(_text_buffer, _scroll_origin, _selection, _get_cursor_cell(), _is_cursor_visible())
@@ -294,6 +304,46 @@ func _send_string(s: String) -> bool:
 		_terminal_output.send_string(s, true)
 		return true
 	return false
+
+func _get_window_id() -> int:
+	var w := get_window()
+	if w != null and w.has_method("get_window_id"):
+		return int(w.get_window_id())
+	return 0
+
+func _is_ime_supported() -> bool:
+	return bool(DisplayServer.has_feature(DisplayServer.FEATURE_IME))
+
+func _set_ime_active_requested(active: bool) -> void:
+	_ime_active_requested = bool(active)
+	_ime_last_cursor_cell = Vector2i(-9999, -9999)
+	_ime_last_position = Vector2i(-9999, -9999)
+	if not _is_ime_supported():
+		return
+	DisplayServer.window_set_ime_active(bool(active), _get_window_id())
+
+func _update_ime_position(force: bool) -> void:
+	if not bool(_ime_active_requested):
+		return
+	if not _is_ime_supported():
+		return
+
+	var cursor_cell := _get_cursor_cell()
+	if cursor_cell == Vector2i(-1, -1):
+		return
+
+	var cw := maxi(1, int(cell_width))
+	var ch := maxi(1, int(cell_height))
+	var local_pos := Vector2(float(cursor_cell.x * cw), float((cursor_cell.y + 1) * ch))
+	var global_pos: Vector2 = get_global_transform_with_canvas() * local_pos
+	var window_pos := Vector2i(int(round(global_pos.x)), int(round(global_pos.y)))
+
+	if not bool(force) and cursor_cell == _ime_last_cursor_cell and window_pos == _ime_last_position:
+		return
+
+	_ime_last_cursor_cell = cursor_cell
+	_ime_last_position = window_pos
+	DisplayServer.window_set_ime_position(window_pos, _get_window_id())
 
 func _should_consume_keycode(godot_keycode: int) -> bool:
 	return consume_keys.has(int(godot_keycode))
