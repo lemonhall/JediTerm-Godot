@@ -1,0 +1,16 @@
+[configuration]
+
+entry_symbol = "jediterm_conpty_library_init"
+compatibility_minimum = "4.6.0"
+
+[libraries]
+
+# Godot 4.x key formats vary across versions; keep both "debug/release" and explicit "editor/template_*".
+# Use template_debug for editor too to avoid requiring a separate "target=editor" build.
+windows.x86_64 = "res://addons/jediterm/bin/win64/conpty.windows.template_debug.x86_64.dll"
+windows.editor.x86_64 = "res://addons/jediterm/bin/win64/conpty.windows.template_debug.x86_64.dll"
+windows.template_debug.x86_64 = "res://addons/jediterm/bin/win64/conpty.windows.template_debug.x86_64.dll"
+windows.template_release.x86_64 = "res://addons/jediterm/bin/win64/conpty.windows.template_release.x86_64.dll"
+
+windows.debug.x86_64 = "res://addons/jediterm/bin/win64/conpty.windows.template_debug.x86_64.dll"
+windows.release.x86_64 = "res://addons/jediterm/bin/win64/conpty.windows.template_release.x86_64.dll"

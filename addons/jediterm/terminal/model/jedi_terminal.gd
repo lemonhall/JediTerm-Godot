@@ -6,6 +6,8 @@ const TermSize := preload("res://addons/jediterm/core/util/term_size.gd")
 const TerminalKeyEncoder := preload("res://addons/jediterm/terminal/terminal_key_encoder.gd")
 const TextStyle := preload("res://addons/jediterm/terminal/text_style.gd")
 const HyperlinkStyle := preload("res://addons/jediterm/terminal/hyperlink_style.gd")
+const AnsiInputProcessor := preload("res://addons/jediterm/terminal/emulator/ansi_input_processor.gd")
+const Utf8StreamDecoder := preload("res://addons/jediterm/terminal/util/utf8_stream_decoder.gd")
 
 const MIN_WIDTH := 5
 const MIN_HEIGHT := 2
@@ -47,6 +49,9 @@ var _mouse_mode: int = 0
 var _mouse_format: int = 0
 var _ansi_conformance_level: int = 0
 
+var _stream_utf8_decoder: RefCounted = Utf8StreamDecoder.new()
+var _stream_ansi_processor: RefCounted = AnsiInputProcessor.new()
+
 func _init(display: RefCounted, text_buffer: RefCounted, state: RefCounted) -> void:
 	_display = display
 	_text_buffer = text_buffer
@@ -58,6 +63,19 @@ func _init(display: RefCounted, text_buffer: RefCounted, state: RefCounted) -> v
 	_modes[TerminalMode.Origin] = false
 	_reset_tab_stops()
 	setAutoNewLine(false)
+
+func processBytes(data: PackedByteArray) -> void:
+	# ConPTY/PTY streams are byte-chunked; decode incrementally and feed VT parser.
+	if data == null or data.is_empty():
+		return
+	if _stream_utf8_decoder == null or _stream_ansi_processor == null:
+		return
+	var text := String(_stream_utf8_decoder.push(data))
+	if text == "":
+		return
+	_stream_ansi_processor.process(self, text)
+	if _text_processing != null and _text_processing.has_method("process_all"):
+		_text_processing.process_all()
 
 static func ensureTermMinimumSize(termSize: RefCounted) -> RefCounted:
 	if termSize == null:

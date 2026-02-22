@@ -7,6 +7,7 @@ const Ascii := preload("res://addons/jediterm/core/ascii.gd")
 const InputEventMask := preload("res://addons/jediterm/core/input_event.gd")
 const KeyEventVK := preload("res://addons/jediterm/core/key_event.gd")
 const Point := preload("res://addons/jediterm/core/compatibility/point.gd")
+const TermSize := preload("res://addons/jediterm/core/util/term_size.gd")
 const TerminalSelection := preload("res://addons/jediterm/terminal/model/terminal_selection.gd")
 const SelectionUtil := preload("res://addons/jediterm/terminal/model/selection_util.gd")
 
@@ -31,6 +32,7 @@ const DEFAULT_LATIN_MONO_FONT_PATH := "res://addons/jediterm/render/fonts/jet_br
 @export var enable_mouse_selection: bool = true
 @export var selection_mouse_button: int = MOUSE_BUTTON_LEFT
 @export var show_cursor: bool = true
+@export var auto_resize_terminal: bool = false
 
 var _text_buffer: RefCounted = null
 var _scroll_origin: int = 0
@@ -61,6 +63,9 @@ func _notification(what: int) -> void:
 		_update_ime_position(true)
 	elif what == NOTIFICATION_FOCUS_EXIT:
 		_set_ime_active_requested(false)
+	elif what == NOTIFICATION_RESIZED:
+		if bool(auto_resize_terminal):
+			_apply_resize_to_terminal_and_output()
 
 func set_text_buffer(text_buffer: RefCounted) -> void:
 	_text_buffer = text_buffer
@@ -292,6 +297,9 @@ func _send_bytes(bytes: PackedByteArray) -> bool:
 	if _terminal_output != null and _terminal_output.has_method("send_bytes"):
 		_terminal_output.send_bytes(bytes, true)
 		return true
+	if _terminal_output != null and _terminal_output.has_method("write"):
+		var n = _terminal_output.write(bytes)
+		return int(n) >= 0
 	return false
 
 func _send_string(s: String) -> bool:
@@ -303,7 +311,39 @@ func _send_string(s: String) -> bool:
 	if _terminal_output != null and _terminal_output.has_method("send_string"):
 		_terminal_output.send_string(s, true)
 		return true
+	if _terminal_output != null and _terminal_output.has_method("write"):
+		var n = _terminal_output.write(s.to_utf8_buffer())
+		return int(n) >= 0
 	return false
+
+func _apply_resize_to_terminal_and_output() -> void:
+	var cols_rows := _compute_term_cols_rows()
+	var cols := int(cols_rows.x)
+	var rows := int(cols_rows.y)
+	if cols <= 0 or rows <= 0:
+		return
+
+	if _terminal != null and _terminal.has_method("resize"):
+		_terminal.resize(TermSize.new(cols, rows), null)
+
+	if _terminal_output != null and _terminal_output.has_method("resize"):
+		_terminal_output.resize(cols, rows)
+
+func _compute_term_cols_rows() -> Vector2i:
+	var cw := maxi(1, int(cell_width))
+	var ch := maxi(1, int(cell_height))
+	var cols := int(floor(float(size.x) / float(cw)))
+	var rows := int(floor(float(size.y) / float(ch)))
+
+	# Avoid shrinking to 0/1 while the Control is still laying out.
+	if _text_buffer != null and _text_buffer.has_method("get_width") and cols <= 1:
+		cols = int(_text_buffer.get_width())
+	if _text_buffer != null and _text_buffer.has_method("get_height") and rows <= 1:
+		rows = int(_text_buffer.get_height())
+
+	cols = maxi(1, cols)
+	rows = maxi(1, rows)
+	return Vector2i(cols, rows)
 
 func _get_window_id() -> int:
 	var w := get_window()

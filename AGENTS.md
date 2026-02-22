@@ -10,10 +10,27 @@
   - `scripts\run_godot_tests.ps1 -One tests\addons\jediterm\test_array_terminal_data_stream.gd`
 - 跑 jediterm suite：`scripts\run_godot_tests.ps1 -Suite jediterm`
 - 跑全部测试：`scripts\run_godot_tests.ps1 -Suite all`
+- 编译 ConPTY GDExtension（增量，产出 DLL）：`pwsh -NoProfile -File scripts\build_conpty_gdextension.ps1`
 
 约定：
 - 默认 Shell 是 PowerShell；连续命令用 `;` 分隔（避免 `&&` / `||`）。
 - 跑测必须用 Godot **console** 版本 exe（否则 headless 输出不稳定）。
+
+## Native Build（Windows ConPTY / GDExtension）
+
+> 目标：在 Win11 上把 `addons/jediterm/native/conpty.gdextension` 对应的 DLL 编出来，让 Godot 不再报 “dynamic library not found”。
+
+- 先确认 MSVC 可用：`pwsh -NoProfile -File scripts\probe_msvc.ps1`
+- 准备 `godot-cpp`（二选一）：
+  - 推荐：用 git submodule 放到 `addons/jediterm/native/thirdparty/godot-cpp/`
+  - 本机快捷：复用 `E:\development\echo-guard\deps\godot-cpp`（junction）：`pwsh -NoProfile -File scripts\setup_godot_cpp.ps1`
+- 编译（默认只编 `template_debug`，用于编辑器/调试）：`pwsh -NoProfile -File scripts\build_conpty_gdextension.ps1`
+  - 同时编 release：`pwsh -NoProfile -File scripts\build_conpty_gdextension.ps1 -All`
+  - Godot 升级后需要重生成绑定：`pwsh -NoProfile -File scripts\build_conpty_gdextension.ps1 -RegenBindings`
+
+增量编译要点：
+- SCons 默认就是增量；不要频繁清理 `addons/jediterm/native/build/`（会导致全量重编）。
+- `-RegenBindings` 很慢，只在升级 Godot / extension_api 变化时用。
 
 ## Architecture Overview
 

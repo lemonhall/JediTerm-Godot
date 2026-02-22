@@ -1,0 +1,24 @@
+#!/usr/bin/env python
+
+import os
+
+env = SConscript("thirdparty/godot-cpp/SConstruct")
+env["ENV"] = os.environ
+
+VariantDir("build", "src", duplicate=0)
+env["OBJPREFIX"] = os.path.join("build", "")
+
+sources = Glob("src/*.cpp")
+
+if env["platform"] == "windows":
+	# Match godot-cpp's CRT choice (/MD); don't force /MT here.
+	env.Append(LIBS=["User32", "Advapi32", "Ole32", "Shell32"])
+else:
+	env.Append(CPPDEFINES=["_CONPTY_DISABLED"])
+
+library = env.SharedLibrary(
+	"../bin/win64/conpty{}{}".format(env["suffix"], env["SHLIBSUFFIX"]),
+	source=sources,
+)
+
+Default(library)

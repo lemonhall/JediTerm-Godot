@@ -7,6 +7,11 @@ refs/*
 .godot/
 .godot-user/
 
+# Native build outputs (GDExtension)
+addons/jediterm/native/bin/
+addons/jediterm/native/build/
+addons/jediterm/bin/
+
 # Python caches
 __pycache__/
 *.pyc
