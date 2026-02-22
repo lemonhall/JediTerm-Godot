@@ -1,6 +1,7 @@
 extends RefCounted
 
 const TerminalTextBuffer := preload("res://addons/jediterm/terminal/model/terminal_text_buffer.gd")
+const TerminalMode := preload("res://addons/jediterm/terminal/terminal_mode.gd")
 
 var _text_buffer: RefCounted
 var _cursor_x: int = 0
@@ -9,11 +10,28 @@ var _scroll_top: int = 0
 var _scroll_bottom: int = 0
 var _saved_main_state := {}
 var _using_alt: bool = false
+var _modes := {}
 
 func _init(_display: RefCounted, text_buffer: RefCounted, _state: RefCounted) -> void:
 	_text_buffer = text_buffer
 	_scroll_top = 0
 	_scroll_bottom = maxi(0, _text_buffer.get_height() - 1)
+	_modes[TerminalMode.AutoWrap] = true
+
+func get_cursor_x() -> int:
+	return _cursor_x + 1
+
+func get_cursor_y() -> int:
+	return _cursor_y + 1
+
+func set_mode_enabled(mode, enabled: bool) -> void:
+	_modes[mode] = enabled
+
+func is_auto_wrap() -> bool:
+	return bool(_modes.get(TerminalMode.AutoWrap, true))
+
+func distance_to_line_end() -> int:
+	return int(_text_buffer.get_width()) - _cursor_x
 
 func write_string(s: String) -> void:
 	var w := int(_text_buffer.get_width())
@@ -35,6 +53,16 @@ func write_string(s: String) -> void:
 				break
 			_text_buffer.write_codepoint(_cursor_x, _cursor_y, cp)
 			_cursor_x += 1
+
+func write_unwrapped_string(s: String) -> void:
+	var length := s.length()
+	var off := 0
+	while off < length:
+		var amount_in_line := mini(distance_to_line_end(), length - off)
+		write_string(s.substr(off, amount_in_line))
+		_wrap_lines()
+		_scroll_y()
+		off += amount_in_line
 
 func new_line() -> void:
 	if _cursor_y >= _scroll_bottom:
@@ -111,3 +139,17 @@ func backspace(count: int) -> void:
 	if count <= 0:
 		return
 	_cursor_x = maxi(0, _cursor_x - count)
+
+func _wrap_lines() -> void:
+	var w := int(_text_buffer.get_width())
+	if _cursor_x >= w:
+		_cursor_x = 0
+		if is_auto_wrap():
+			_cursor_y += 1
+
+func _scroll_y() -> void:
+	if _cursor_y > _scroll_bottom:
+		_cursor_y = _scroll_bottom
+		_text_buffer.scroll_region_up(_scroll_top, _scroll_bottom, 1)
+	if _cursor_y < _scroll_top:
+		_cursor_y = _scroll_top

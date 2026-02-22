@@ -23,7 +23,7 @@
 | M5 | Text Buffer | `TerminalTextBufferTest.java` 移植并全绿 | `scripts\run_godot_tests.ps1 -Suite jediterm` | done |
 | M6 | Key Encoder | `TerminalKeyEncoderTest.kt` 移植并全绿 | `scripts\run_godot_tests.ps1 -Suite jediterm` | done |
 | M7 | Sync Output | `SynchronizedOutputTest.kt` 移植并全绿 | `scripts\run_godot_tests.ps1 -Suite jediterm` | done |
-| M8 | Modes/Scroll/Select/Style | `ModesTest.java`、`ScrollingTest.java`、`SelectionTest.java`、`StyledTextTest.java`、`util/TerminalSelectionTest.java` 移植并全绿 | `scripts\run_godot_tests.ps1 -Suite jediterm` | todo |
+| M8 | Modes/Scroll/Select/Style | `ModesTest.java`、`ScrollingTest.java`、`SelectionTest.java`、`StyledTextTest.java`、`util/TerminalSelectionTest.java` 移植并全绿 | `scripts\run_godot_tests.ps1 -Suite jediterm` | doing |
 | M9 | Emulator + vttest | `EmulatorTest*`、`VtEmulatorTest.java` + `testData/vttest` 跑通 | `scripts\run_godot_tests.ps1 -Suite jediterm` | todo |
 | M10 | Hyperlinks/TypeAhead | `TextProcessingTest.java`、`TerminalTypeAheadManagerTest.java` 等移植并全绿 | `scripts\run_godot_tests.ps1 -Suite jediterm` | todo |
 
@@ -49,7 +49,7 @@
 | `com/jediterm/BufferResizeTest.kt` | P1 | `tests/addons/jediterm/test_buffer_resize.gd` | `addons/jediterm/terminal/jedi_terminal.gd`（待定） | todo |  |
 | `com/jediterm/EmulatorTest.java` | P0 | `tests/addons/jediterm/test_emulator.gd` | `addons/jediterm/terminal/emulator/jedi_emulator.gd`（待定） | todo |  |
 | `com/jediterm/VtEmulatorTest.java` | P0 | `tests/addons/jediterm/test_vt_emulator_vttest.gd` | `addons/jediterm/terminal/emulator/jedi_emulator.gd`（待定） | todo |  |
-| `com/jediterm/ModesTest.java` | P1 | `tests/addons/jediterm/test_modes.gd` | `addons/jediterm/terminal/jedi_terminal.gd`（待定） | todo |  |
+| `com/jediterm/ModesTest.java` | P1 | `tests/addons/jediterm/test_modes.gd` | `addons/jediterm/terminal/model/jedi_terminal.gd`; `addons/jediterm/terminal/terminal_mode.gd` | done | 2026-02-21: `scripts\\run_godot_tests.ps1 -One tests\\addons\\jediterm\\test_modes.gd` |
 | `com/jediterm/ScrollingTest.java` | P1 | `tests/addons/jediterm/test_scrolling.gd` | `addons/jediterm/terminal/model/*`（待定） | todo |  |
 | `com/jediterm/SelectionTest.java` | P1 | `tests/addons/jediterm/test_selection.gd` | `addons/jediterm/terminal/model/*`（待定） | todo |  |
 | `com/jediterm/util/TerminalSelectionTest.java` | P1 | `tests/addons/jediterm/test_terminal_selection.gd`（待定） | `addons/jediterm/terminal/model/*`（待定） | todo |  |
