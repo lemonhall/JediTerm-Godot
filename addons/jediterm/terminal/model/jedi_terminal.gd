@@ -2,6 +2,7 @@ extends RefCounted
 
 const TerminalTextBuffer := preload("res://addons/jediterm/terminal/model/terminal_text_buffer.gd")
 const TerminalMode := preload("res://addons/jediterm/terminal/terminal_mode.gd")
+const TermSize := preload("res://addons/jediterm/core/util/term_size.gd")
 
 var _text_buffer: RefCounted
 var _cursor_x: int = 0
@@ -41,6 +42,9 @@ func write_string(s: String) -> void:
 
 	var n := s.length()
 	for i in n:
+		if _cursor_x >= w:
+			_wrap_lines()
+			_scroll_y()
 		var cp := int(s.unicode_at(i))
 		if TerminalTextBuffer.is_double_width_codepoint(cp):
 			if _cursor_x > w - 2:
@@ -49,8 +53,6 @@ func write_string(s: String) -> void:
 			_text_buffer.write_codepoint(_cursor_x + 1, _cursor_y, TerminalTextBuffer.DWC)
 			_cursor_x += 2
 		else:
-			if _cursor_x >= w:
-				break
 			_text_buffer.write_codepoint(_cursor_x, _cursor_y, cp)
 			_cursor_x += 1
 
@@ -73,6 +75,10 @@ func new_line() -> void:
 
 func carriage_return() -> void:
 	_cursor_x = 0
+
+func crnl() -> void:
+	carriage_return()
+	new_line()
 
 func use_alternate_buffer(enabled: bool) -> void:
 	if enabled == _using_alt:
@@ -153,3 +159,14 @@ func _scroll_y() -> void:
 		_text_buffer.scroll_region_up(_scroll_top, _scroll_bottom, 1)
 	if _cursor_y < _scroll_top:
 		_cursor_y = _scroll_top
+
+func resize(new_term_size: RefCounted, _origin) -> void:
+	if new_term_size == null:
+		return
+	var new_w := int(new_term_size.columns)
+	var new_h := int(new_term_size.rows)
+	var res: Dictionary = _text_buffer.resize(new_w, new_h, get_cursor_x(), get_cursor_y())
+	_cursor_x = int(res.cursor_x) - 1
+	_cursor_y = int(res.cursor_y) - 1
+	_scroll_top = 0
+	_scroll_bottom = maxi(0, _text_buffer.get_height() - 1)

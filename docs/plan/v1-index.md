@@ -50,7 +50,7 @@
 | `com/jediterm/EmulatorTest.java` | P0 | `tests/addons/jediterm/test_emulator.gd` | `addons/jediterm/terminal/emulator/jedi_emulator.gd`（待定） | todo |  |
 | `com/jediterm/VtEmulatorTest.java` | P0 | `tests/addons/jediterm/test_vt_emulator_vttest.gd` | `addons/jediterm/terminal/emulator/jedi_emulator.gd`（待定） | todo |  |
 | `com/jediterm/ModesTest.java` | P1 | `tests/addons/jediterm/test_modes.gd` | `addons/jediterm/terminal/model/jedi_terminal.gd`; `addons/jediterm/terminal/terminal_mode.gd` | done | 2026-02-21: `scripts\\run_godot_tests.ps1 -One tests\\addons\\jediterm\\test_modes.gd` |
-| `com/jediterm/ScrollingTest.java` | P1 | `tests/addons/jediterm/test_scrolling.gd` | `addons/jediterm/terminal/model/*`（待定） | todo |  |
+| `com/jediterm/ScrollingTest.java` | P1 | `tests/addons/jediterm/test_scrolling.gd` | `addons/jediterm/terminal/model/terminal_text_buffer.gd`; `addons/jediterm/terminal/model/jedi_terminal.gd`; `addons/jediterm/core/util/term_size.gd`; `addons/jediterm/terminal/request_origin.gd`; `addons/jediterm/util/array_based_text_consumer.gd` | done | 2026-02-22: `scripts\\run_godot_tests.ps1 -One tests\\addons\\jediterm\\test_scrolling.gd` |
 | `com/jediterm/SelectionTest.java` | P1 | `tests/addons/jediterm/test_selection.gd` | `addons/jediterm/terminal/model/*`（待定） | todo |  |
 | `com/jediterm/util/TerminalSelectionTest.java` | P1 | `tests/addons/jediterm/test_terminal_selection.gd`（待定） | `addons/jediterm/terminal/model/*`（待定） | todo |  |
 | `com/jediterm/StyledTextTest.java` | P1 | `tests/addons/jediterm/test_styled_text.gd` | `addons/jediterm/terminal/model/*`（待定） | todo |  |
