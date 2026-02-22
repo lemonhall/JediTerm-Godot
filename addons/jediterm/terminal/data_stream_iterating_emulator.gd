@@ -1,4 +1,4 @@
-extends RefCounted
+extends "res://addons/jediterm/terminal/emulator/emulator.gd"
 
 var _data_stream = null
 var _terminal = null
@@ -35,4 +35,3 @@ func _get_char() -> int:
 func processChar(_ch, _terminal_ref) -> void:
 	# abstract
 	pass
-

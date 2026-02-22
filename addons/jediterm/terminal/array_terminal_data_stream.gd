@@ -1,4 +1,4 @@
-extends RefCounted
+extends "res://addons/jediterm/terminal/terminal_data_stream.gd"
 
 var _buf: PackedInt32Array
 var _offset: int = 0
