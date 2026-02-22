@@ -4,10 +4,22 @@ const TextStyle := preload("res://addons/jediterm/terminal/text_style.gd")
 
 var _text_buffer: RefCounted
 var _scroll_origin: int = 0
+var _selection = null
+var _cursor_cell: Vector2i = Vector2i(-1, -1)
+var _cursor_visible: bool = false
 
-func _init(text_buffer: RefCounted, scroll_origin: int = 0) -> void:
+func _init(
+	text_buffer: RefCounted,
+	scroll_origin: int = 0,
+	selection = null,
+	cursor_cell: Vector2i = Vector2i(-1, -1),
+	cursor_visible: bool = false
+) -> void:
 	_text_buffer = text_buffer
 	set_scroll_origin(scroll_origin)
+	_selection = selection
+	_cursor_cell = Vector2i(cursor_cell)
+	_cursor_visible = bool(cursor_visible)
 
 func get_width() -> int:
 	if _text_buffer != null and _text_buffer.has_method("get_width"):
@@ -53,3 +65,12 @@ func get_styled_char_at(x: int, selection_y: int) -> Array:
 	if _text_buffer.has_method("get_styled_char_at"):
 		return Array(_text_buffer.get_styled_char_at(int(x), int(selection_y)))
 	return [32, TextStyle.EMPTY]
+
+func get_selection():
+	return _selection
+
+func get_cursor_cell() -> Vector2i:
+	return Vector2i(_cursor_cell)
+
+func is_cursor_visible() -> bool:
+	return bool(_cursor_visible)

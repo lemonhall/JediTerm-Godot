@@ -6,6 +6,9 @@ const TerminalDrawPlan := preload("res://addons/jediterm/render/terminal_draw_pl
 const Ascii := preload("res://addons/jediterm/core/ascii.gd")
 const InputEventMask := preload("res://addons/jediterm/core/input_event.gd")
 const KeyEventVK := preload("res://addons/jediterm/core/key_event.gd")
+const Point := preload("res://addons/jediterm/core/compatibility/point.gd")
+const TerminalSelection := preload("res://addons/jediterm/terminal/model/terminal_selection.gd")
+const SelectionUtil := preload("res://addons/jediterm/terminal/model/selection_util.gd")
 
 const DEFAULT_TERMINAL_FONT_PATH := "res://addons/jediterm/render/fonts/MapleMono-CN-Regular.ttf"
 const DEFAULT_TERMINAL_FONT_ALT_PATH := "res://addons/jediterm/render/fonts/SarasaMonoSC-Regular.ttf"
@@ -24,6 +27,9 @@ const DEFAULT_LATIN_MONO_FONT_PATH := "res://addons/jediterm/render/fonts/jet_br
 @export var cursor_bg: Color = Color(1.0, 1.0, 1.0, 1.0)
 
 @export var consume_keys: PackedInt32Array = PackedInt32Array([KEY_TAB, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_ENTER, KEY_KP_ENTER, KEY_ESCAPE, KEY_BACKSPACE])
+@export var enable_mouse_selection: bool = true
+@export var selection_mouse_button: int = MOUSE_BUTTON_LEFT
+@export var show_cursor: bool = true
 
 var _text_buffer: RefCounted = null
 var _scroll_origin: int = 0
@@ -32,6 +38,9 @@ var _terminal_output = null
 var _fallback_terminal_font: Font = null
 var _debug_redraw_request_count: int = 0
 var _debug_last_consumed_keycode: int = -1
+var _selection: RefCounted = null
+var _is_selecting: bool = false
+var _last_selection_cell: Vector2i = Vector2i(-1, -1)
 
 func _init() -> void:
 	focus_mode = Control.FOCUS_ALL
@@ -95,7 +104,7 @@ func _debug_get_last_consumed_keycode() -> int:
 	return int(_debug_last_consumed_keycode)
 
 func build_draw_plan() -> RefCounted:
-	var snap := RenderSnapshot.new(_text_buffer, _scroll_origin)
+	var snap := RenderSnapshot.new(_text_buffer, _scroll_origin, _selection, _get_cursor_cell(), _is_cursor_visible())
 	var plan := TerminalDrawPlan.new()
 	plan.build_from_snapshot(snap, {
 		"cell_width": int(cell_width),
@@ -137,6 +146,8 @@ func handle_key_event(event: InputEventKey) -> bool:
 	return _send_bytes(bytes)
 
 func _gui_input(event: InputEvent) -> void:
+	if enable_mouse_selection and _handle_mouse_event_for_selection(event):
+		return
 	if not has_focus():
 		return
 	if event is InputEventKey:
@@ -144,6 +155,91 @@ func _gui_input(event: InputEvent) -> void:
 			if _should_consume_keycode(int(event.keycode)):
 				_debug_last_consumed_keycode = int(event.keycode)
 				accept_event()
+
+func copy_selection_text() -> String:
+	if _text_buffer == null or _selection == null:
+		return ""
+	if not _selection.has_method("pointsForRun"):
+		return ""
+	var w := int(_text_buffer.get_width()) if _text_buffer.has_method("get_width") else 0
+	if w <= 0:
+		return ""
+	var points := Array(_selection.pointsForRun(int(w)))
+	if points.size() < 2:
+		return ""
+	var s: Point = points[0]
+	var e: Point = points[1]
+	if s == null or e == null:
+		return ""
+	var ss := Point.new(int(s.x), int(_scroll_origin) + int(s.y))
+	var ee := Point.new(int(e.x), int(_scroll_origin) + int(e.y))
+	return String(SelectionUtil.get_selection_text(ss, ee, _text_buffer))
+
+func copy_selection_to_clipboard() -> String:
+	var text := copy_selection_text()
+	if text == "":
+		return ""
+	DisplayServer.clipboard_set(text)
+	return text
+
+func paste_text(text: String) -> bool:
+	return _send_string(String(text))
+
+func paste_from_clipboard() -> bool:
+	return paste_text(String(DisplayServer.clipboard_get()))
+
+func clear_selection() -> void:
+	_selection = null
+	_is_selecting = false
+	_last_selection_cell = Vector2i(-1, -1)
+	_request_redraw()
+
+func _handle_mouse_event_for_selection(event: InputEvent) -> bool:
+	if _text_buffer == null:
+		return false
+	var w := int(_text_buffer.get_width()) if _text_buffer.has_method("get_width") else 0
+	var h := int(_text_buffer.get_height()) if _text_buffer.has_method("get_height") else 0
+	if w <= 0 or h <= 0:
+		return false
+
+	if event is InputEventMouseButton and int(event.button_index) == int(selection_mouse_button):
+		var cell := _event_pos_to_cell(Vector2(event.position), w, h)
+		if bool(event.pressed):
+			grab_focus()
+			_is_selecting = true
+			_last_selection_cell = cell
+			_selection = TerminalSelection.new(Point.new(int(cell.x), int(cell.y)), Point.new(int(cell.x), int(cell.y)))
+			_request_redraw()
+			accept_event()
+			return true
+		# release
+		if _is_selecting and _selection != null and _selection.has_method("updateEnd"):
+			_selection.updateEnd(Point.new(int(cell.x), int(cell.y)))
+		_is_selecting = false
+		_last_selection_cell = cell
+		_request_redraw()
+		accept_event()
+		return true
+
+	if event is InputEventMouseMotion and _is_selecting and _selection != null:
+		var cell2 := _event_pos_to_cell(Vector2(event.position), w, h)
+		if cell2 != _last_selection_cell and _selection.has_method("updateEnd"):
+			_last_selection_cell = cell2
+			_selection.updateEnd(Point.new(int(cell2.x), int(cell2.y)))
+			_request_redraw()
+		accept_event()
+		return true
+
+	return false
+
+func _event_pos_to_cell(pos: Vector2, buffer_width: int, buffer_height: int) -> Vector2i:
+	var cw := maxi(1, int(cell_width))
+	var ch := maxi(1, int(cell_height))
+	var x := int(floor(pos.x / float(cw)))
+	var y := int(floor(pos.y / float(ch)))
+	x = clampi(x, 0, maxi(0, int(buffer_width) - 1))
+	y = clampi(y, 0, maxi(0, int(buffer_height) - 1))
+	return Vector2i(x, y)
 
 func _draw() -> void:
 	var plan = build_draw_plan()
@@ -265,6 +361,25 @@ func _get_draw_font_size() -> int:
 	if int(terminal_font_size) > 0:
 		return int(terminal_font_size)
 	return int(get_theme_default_font_size())
+
+func _get_cursor_cell() -> Vector2i:
+	if _terminal == null:
+		return Vector2i(-1, -1)
+	if _terminal.has_method("get_cursor_position"):
+		return Vector2i(_terminal.get_cursor_position())
+	if _terminal.has_method("getCursorPosition"):
+		return Vector2i(_terminal.getCursorPosition())
+	if _terminal.has_method("getCursorX") and _terminal.has_method("getCursorY"):
+		return Vector2i(int(_terminal.getCursorX()), int(_terminal.getCursorY()))
+	return Vector2i(-1, -1)
+
+func _is_cursor_visible() -> bool:
+	if not bool(show_cursor):
+		return false
+	# When viewing history (scroll origin < 0), hide cursor highlight for now.
+	if int(_scroll_origin) != 0:
+		return false
+	return _terminal != null
 
 func _update_cell_metrics() -> void:
 	var font := _get_draw_font()
