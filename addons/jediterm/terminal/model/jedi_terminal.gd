@@ -6,6 +6,8 @@ const TermSize := preload("res://addons/jediterm/core/util/term_size.gd")
 const TextStyle := preload("res://addons/jediterm/terminal/text_style.gd")
 const HyperlinkStyle := preload("res://addons/jediterm/terminal/hyperlink_style.gd")
 
+const MIN_WIDTH := 5
+
 var _display: RefCounted
 var _text_buffer: RefCounted
 var _style_state: RefCounted
@@ -469,9 +471,21 @@ func _scroll_y() -> void:
 func resize(new_term_size: RefCounted, _origin) -> void:
 	if new_term_size == null:
 		return
-	var new_w := int(new_term_size.columns)
+	var new_w := maxi(MIN_WIDTH, int(new_term_size.columns))
 	var new_h := int(new_term_size.rows)
-	var res: Dictionary = _text_buffer.resize(new_w, new_h, get_cursor_x(), get_cursor_y())
+	var res: Dictionary = {}
+	if _using_alt and _text_buffer != null and _text_buffer.has_method("resize_with_main_cursor") and _saved_main_state.has("cursor_x") and _saved_main_state.has("cursor_y"):
+		var main_cx1 := int(_saved_main_state.cursor_x) + 1
+		var main_cy1 := int(_saved_main_state.cursor_y) + 1
+		res = _text_buffer.resize_with_main_cursor(new_w, new_h, get_cursor_x(), get_cursor_y(), main_cx1, main_cy1)
+		if res.has("main_cursor_x"):
+			_saved_main_state.cursor_x = int(res.main_cursor_x) - 1
+		if res.has("main_cursor_y"):
+			_saved_main_state.cursor_y = int(res.main_cursor_y) - 1
+		_saved_main_state.scroll_top = 0
+		_saved_main_state.scroll_bottom = maxi(0, _text_buffer.get_height() - 1)
+	else:
+		res = _text_buffer.resize(new_w, new_h, get_cursor_x(), get_cursor_y())
 	_cursor_x = int(res.cursor_x) - 1
 	_cursor_y = int(res.cursor_y) - 1
 	_scroll_top = 0

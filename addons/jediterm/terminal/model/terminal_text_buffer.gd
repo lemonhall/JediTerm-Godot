@@ -22,6 +22,7 @@ var _main_wrapped_flags: PackedByteArray
 var _alt_wrapped_flags: PackedByteArray
 var _main_storage_size: int = 0
 var _alt_storage_size: int = 0
+var _tracked_points: Array = []
 
 func _init(width: int, height: int, _state: RefCounted) -> void:
 	_width = maxi(0, width)
@@ -111,6 +112,20 @@ func get_history_lines_count() -> int:
 
 func get_history_lines_storage() -> RefCounted:
 	return _history_lines
+
+func track_point(p: RefCounted) -> void:
+	if p == null:
+		return
+	if _tracked_points.has(p):
+		return
+	_tracked_points.append(p)
+
+func untrack_point(p: RefCounted) -> void:
+	if p == null:
+		return
+	var idx := _tracked_points.find(p)
+	if idx >= 0:
+		_tracked_points.remove_at(idx)
 
 func process_history_and_screen_lines(scroll_origin: int, maximal_lines_to_process: int, consumer) -> void:
 	if consumer == null or maximal_lines_to_process <= 0:
@@ -568,6 +583,92 @@ func _make_blank_wrap_flags() -> PackedByteArray:
 		arr[i] = 0
 	return arr
 
+func _snapshot_alt_state() -> Dictionary:
+	var old_w := _width
+	var old_h := _height
+	var screen: Array = []
+	var styles: Array = []
+	screen.resize(old_h)
+	styles.resize(old_h)
+	for y in old_h:
+		var row: PackedInt32Array = _alt_screen[y]
+		var style_row: Array = _alt_styles[y]
+		screen[y] = row.duplicate()
+		styles[y] = style_row.duplicate(true)
+	return {
+		"old_w": old_w,
+		"old_h": old_h,
+		"screen": screen,
+		"styles": styles,
+		"lengths": _alt_line_lengths.duplicate(),
+		"wraps": _alt_wrapped_flags.duplicate(),
+		"storage_size": _alt_storage_size,
+	}
+
+func _restore_alt_from_snapshot(snap: Dictionary, new_w: int, new_h: int) -> void:
+	var old_w := int(snap.get("old_w", 0))
+	var old_h := int(snap.get("old_h", 0))
+	var old_screen: Array = Array(snap.get("screen", []))
+	var old_styles: Array = Array(snap.get("styles", []))
+	var old_lengths: PackedInt32Array = PackedInt32Array(snap.get("lengths", PackedInt32Array()))
+	var old_wraps: PackedByteArray = PackedByteArray(snap.get("wraps", PackedByteArray()))
+
+	_alt_screen = []
+	_alt_styles = []
+	_alt_screen.resize(new_h)
+	_alt_styles.resize(new_h)
+	_alt_line_lengths = PackedInt32Array()
+	_alt_line_lengths.resize(new_h)
+	_alt_wrapped_flags = PackedByteArray()
+	_alt_wrapped_flags.resize(new_h)
+
+	for y in new_h:
+		var row := PackedInt32Array()
+		row.resize(new_w)
+		var style_row: Array = []
+		style_row.resize(new_w)
+		for x in new_w:
+			row[x] = SPACE
+			style_row[x] = TextStyle.EMPTY
+
+		if y < old_h and y < old_screen.size():
+			var src_row: PackedInt32Array = PackedInt32Array(old_screen[y])
+			var src_styles: Array = Array(old_styles[y]) if y < old_styles.size() else []
+			var copy_w := mini(new_w, old_w)
+			for x in copy_w:
+				row[x] = int(src_row[x]) if x < src_row.size() else SPACE
+				style_row[x] = src_styles[x] if x < src_styles.size() else TextStyle.EMPTY
+
+			var src_len := int(old_lengths[y]) if y < old_lengths.size() else 0
+			_alt_line_lengths[y] = mini(src_len, new_w)
+			_alt_wrapped_flags[y] = old_wraps[y] if y < old_wraps.size() else 0
+		else:
+			_alt_line_lengths[y] = 0
+			_alt_wrapped_flags[y] = 0
+
+		_alt_screen[y] = row
+		_alt_styles[y] = style_row
+
+	_alt_storage_size = 0
+	for y in range(new_h - 1, -1, -1):
+		if int(_alt_line_lengths[y]) > 0:
+			_alt_storage_size = y + 1
+			break
+
+func resize_with_main_cursor(new_columns: int, new_rows: int, active_cursor_x_1: int, active_cursor_y_1: int, main_cursor_x_1: int, main_cursor_y_1: int) -> Dictionary:
+	var snap := _snapshot_alt_state()
+	var was_alt := _using_alt
+	_using_alt = false
+	var main_res: Dictionary = resize(new_columns, new_rows, main_cursor_x_1, main_cursor_y_1)
+	_restore_alt_from_snapshot(snap, _width, _height)
+	_using_alt = was_alt
+	return {
+		"cursor_x": clampi(int(active_cursor_x_1), 1, _width),
+		"cursor_y": clampi(int(active_cursor_y_1), 1, _height),
+		"main_cursor_x": int(main_res.get("cursor_x", 1)),
+		"main_cursor_y": int(main_res.get("cursor_y", 1)),
+	}
+
 func _get_screen() -> Array:
 	return _alt_screen if _using_alt else _main_screen
 
@@ -738,6 +839,16 @@ func resize(new_columns: int, new_rows: int, cursor_x_1: int, cursor_y_1: int) -
 			break
 	var old_screen_line_count := maxi(0, last_non_nul + 1)
 	old_screen_line_count = maxi(old_screen_line_count, old_cursor_y0 + 1)
+	# Ensure tracked screen points remain mappable.
+	var max_tracked_screen_y := -1
+	for p in _tracked_points:
+		if p == null:
+			continue
+		var py := int(p.y)
+		if py >= 0:
+			max_tracked_screen_y = maxi(max_tracked_screen_y, py)
+	if max_tracked_screen_y >= 0:
+		old_screen_line_count = maxi(old_screen_line_count, max_tracked_screen_y + 1)
 	old_screen_line_count = mini(old_screen_line_count, _height)
 
 	# Reflow-like resize similar to upstream ChangeWidthOperation (text-only).
@@ -748,12 +859,40 @@ func resize(new_columns: int, new_rows: int, cursor_x_1: int, cursor_y_1: int) -
 		"len": 0,
 	}
 
+	var tracked_maps: Array = []
+	for p in _tracked_points:
+		if p == null:
+			continue
+		tracked_maps.append({
+			"point": p,
+			"old_y": int(p.y),
+			"old_x0": clampi(int(p.x), 0, maxi(0, _width)),
+			"new_abs_y": 0,
+			"new_x0": 0,
+			"set": false,
+		})
+
 	var cursor_new_x := 0
 	var cursor_new_y := 0
 	var cursor_set := false
 
 	# Add history.
 	for i in history_size:
+		for pm in tracked_maps:
+			if bool(pm.set):
+				continue
+			var oy := int(pm.old_y)
+			if oy < 0 and history_size + oy == i:
+				var cur_len0 := int(reflow_state.len)
+				var abs_x0 := cur_len0 + int(pm.old_x0)
+				var new_x0 := abs_x0 % new_width
+				var new_y0 := int(reflow_state.lines.size()) + int(abs_x0 / new_width)
+				if bool(reflow_state.open):
+					new_y0 -= 1
+				pm.new_x0 = int(new_x0)
+				pm.new_abs_y = int(new_y0)
+				pm.set = true
+
 		var hline = _history_lines.get_line(i)
 		var text := String(hline.get_text()) if hline != null else ""
 		var wrapped := bool(hline.is_wrapped) if hline != null else false
@@ -780,6 +919,20 @@ func resize(new_columns: int, new_rows: int, cursor_x_1: int, cursor_y_1: int) -
 			cursor_new_y = int(new_y)
 			cursor_set = true
 
+		for pm in tracked_maps:
+			if bool(pm.set):
+				continue
+			if int(pm.old_y) == y:
+				var cur_len3 := int(reflow_state.len)
+				var abs_x3 := cur_len3 + int(pm.old_x0)
+				var new_x3 := abs_x3 % new_width
+				var new_y3 := int(all_lines.size()) + int(abs_x3 / new_width)
+				if bool(reflow_state.open):
+					new_y3 -= 1
+				pm.new_x0 = int(new_x3)
+				pm.new_abs_y = int(new_y3)
+				pm.set = true
+
 		var line_text := _row_to_string_len(_main_screen[y], int(_main_line_lengths[y]))
 		var line_wrapped := bool(_main_wrapped_flags[y])
 		_reflow_add_text(reflow_state, line_text, line_wrapped, new_width)
@@ -790,6 +943,16 @@ func resize(new_columns: int, new_rows: int, cursor_x_1: int, cursor_y_1: int) -
 
 	all_lines = reflow_state.lines
 	all_wrapped = reflow_state.wrapped
+
+	# Ensure viewport calculations can accommodate points that map beyond the last real line
+	# (e.g. cursor at x==width wraps to a virtual next line after width decreases).
+	var required_last_y := cursor_new_y
+	for pm in tracked_maps:
+		if bool(pm.set):
+			required_last_y = maxi(required_last_y, int(pm.new_abs_y))
+	while all_lines.size() <= required_last_y:
+		all_lines.append("")
+		all_wrapped.append(0)
 
 	# Empty bottom line count.
 	var empty_bottom := 0
@@ -809,6 +972,9 @@ func resize(new_columns: int, new_rows: int, cursor_x_1: int, cursor_y_1: int) -
 	screen_start_ind = mini(screen_start_ind, all_lines.size() - min_lines)
 	screen_start_ind = maxi(screen_start_ind, cursor_new_y - new_height + 1)
 	screen_start_ind = clampi(screen_start_ind, 0, max_start)
+	# If width didn't change, keep history lines in history (don't pull scrollback into the screen on pure vertical resize).
+	if new_width == _width:
+		screen_start_ind = maxi(screen_start_ind, history_size)
 
 	# Rebuild storages.
 	_history_lines.clear()
@@ -837,6 +1003,14 @@ func resize(new_columns: int, new_rows: int, cursor_x_1: int, cursor_y_1: int) -
 		_main_wrapped_flags[row] = 1 if (idx < all_wrapped.size() and bool(all_wrapped[idx])) else 0
 
 	cursor_new_y -= screen_start_ind
+	for pm in tracked_maps:
+		if not bool(pm.set):
+			continue
+		var p = pm.point
+		if p == null:
+			continue
+		p.x = clampi(int(pm.new_x0), 0, _width)
+		p.y = int(pm.new_abs_y) - screen_start_ind
 	return {
 		"cursor_x": clampi(cursor_new_x + 1, 1, _width),
 		"cursor_y": clampi(cursor_new_y + 1, 1, _height),

@@ -6,30 +6,38 @@ const TerminalTextBuffer := preload("res://addons/jediterm/terminal/model/termin
 static func get_selection_text(start: RefCounted, end: RefCounted, buffer: RefCounted) -> String:
 	if buffer == null:
 		return ""
-	var s: Point = start
-	var e: Point = end
-	if s == null or e == null:
+	if start == null or end == null:
 		return ""
 
 	# Sort points top-to-bottom, then left-to-right.
-	var p0: Point = s
-	var p1: Point = e
-	if p0.y > p1.y or (p0.y == p1.y and p0.x > p1.x):
-		p0 = e
-		p1 = s
+	var ax := int(start.x)
+	var ay := int(start.y)
+	var bx := int(end.x)
+	var by := int(end.y)
+	if ay > by or (ay == by and ax > bx):
+		var tx := ax
+		var ty := ay
+		ax = bx
+		ay = by
+		bx = tx
+		by = ty
+
+	# Clamp selection to available history if possible (matches upstream behavior).
+	if buffer.has_method("get_history_lines_count"):
+		ay = maxi(ay, -int(buffer.get_history_lines_count()))
 
 	var out := ""
-	for y in range(p0.y, p1.y + 1):
+	for y in range(ay, by + 1):
 		var row_text := ""
 		if buffer.has_method("get_row_text_for_selection"):
 			row_text = String(buffer.get_row_text_for_selection(y))
 
 		var from_x := 0
 		var to_x := row_text.length()
-		if y == p0.y:
-			from_x = p0.x
-		if y == p1.y:
-			to_x = p1.x
+		if y == ay:
+			from_x = ax
+		if y == by:
+			to_x = bx
 
 		from_x = clampi(from_x, 0, row_text.length())
 		to_x = clampi(to_x, 0, row_text.length())
@@ -43,12 +51,11 @@ static func get_selection_text(start: RefCounted, end: RefCounted, buffer: RefCo
 			part = part.replace(String.chr(TerminalTextBuffer.DWC), "")
 		out += part
 
-		if y != p1.y:
+		if y != by:
 			var wrapped := false
 			if buffer.has_method("is_row_wrapped_for_selection"):
 				wrapped = bool(buffer.is_row_wrapped_for_selection(y))
-			if not wrapped:
+			if (not wrapped) or bx > row_text.length():
 				out += "\n"
 
 	return out
-

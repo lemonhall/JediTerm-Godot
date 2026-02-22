@@ -46,7 +46,7 @@
 | `com/jediterm/terminal/model/LimitedSizeLinesStorageTest.kt` | P1 | `tests/addons/jediterm/test_limited_size_lines_storage.gd` | `addons/jediterm/terminal/model/cyclic_buffer_lines_storage.gd` | done | 2026-02-21: `scripts\\run_godot_tests.ps1 -One tests\\addons\\jediterm\\test_limited_size_lines_storage.gd` |
 | `com/jediterm/TerminalTextBufferTest.java` | P0 | `tests/addons/jediterm/test_terminal_text_buffer.gd` | `addons/jediterm/terminal/model/terminal_text_buffer.gd`; `addons/jediterm/terminal/model/jedi_terminal.gd`; `addons/jediterm/terminal/model/style_state.gd`; `addons/jediterm/util/back_buffer_display.gd`; `addons/jediterm/terminal/text_style.gd` | done | 2026-02-21: `scripts\\run_godot_tests.ps1 -One tests\\addons\\jediterm\\test_terminal_text_buffer.gd` |
 | `com/jediterm/TerminalKeyEncoderTest.kt` | P1 | `tests/addons/jediterm/test_terminal_key_encoder.gd` | `addons/jediterm/terminal/terminal_key_encoder.gd`; `addons/jediterm/core/input_event.gd`; `addons/jediterm/core/key_event.gd`; `addons/jediterm/core/platform.gd`; `addons/jediterm/core/ascii.gd` | done | 2026-02-21: `scripts\\run_godot_tests.ps1 -One tests\\addons\\jediterm\\test_terminal_key_encoder.gd` |
-| `com/jediterm/BufferResizeTest.kt` | P1 | `tests/addons/jediterm/test_buffer_resize.gd` | `addons/jediterm/terminal/jedi_terminal.gd`（待定） | todo |  |
+| `com/jediterm/BufferResizeTest.kt` | P1 | `tests/addons/jediterm/test_buffer_resize.gd` | `addons/jediterm/terminal/model/jedi_terminal.gd`; `addons/jediterm/terminal/model/terminal_text_buffer.gd`; `addons/jediterm/util/back_buffer_display.gd` | done | 2026-02-22: `scripts\run_godot_tests.ps1 -One tests\addons\jediterm\test_buffer_resize.gd` |
 | `com/jediterm/EmulatorTest.java` | P0 | `tests/addons/jediterm/test_emulator.gd` | `addons/jediterm/terminal/emulator/ansi_input_processor.gd`; `addons/jediterm/terminal/model/jedi_terminal.gd`; `addons/jediterm/terminal/model/terminal_text_buffer.gd`; `addons/jediterm/util/back_buffer_display.gd`; `tests/_jediterm/_test_session.gd`; `tests/test_data/test*.txt` | done | 2026-02-22: `scripts\\run_godot_tests.ps1 -One tests\\addons\\jediterm\\test_emulator.gd` |
 | `com/jediterm/VtEmulatorTest.java` | P0 | `tests/addons/jediterm/test_vt_emulator_vttest.gd` | `addons/jediterm/terminal/emulator/ansi_input_processor.gd`; `addons/jediterm/terminal/model/jedi_terminal.gd`; `addons/jediterm/terminal/model/terminal_text_buffer.gd`; `tests/_jediterm/_test_session.gd`; `tests/test_data/vttest/**` | done | 2026-02-22: `scripts\\run_godot_tests.ps1 -One tests\\addons\\jediterm\\test_vt_emulator_vttest.gd` |
 | `com/jediterm/ModesTest.java` | P1 | `tests/addons/jediterm/test_modes.gd` | `addons/jediterm/terminal/model/jedi_terminal.gd`; `addons/jediterm/terminal/terminal_mode.gd` | done | 2026-02-21: `scripts\\run_godot_tests.ps1 -One tests\\addons\\jediterm\\test_modes.gd` |
@@ -63,13 +63,13 @@
 
 | Upstream Harness | 用途 | Target（预期） | Status |
 |---|---|---|---|
-| `com/jediterm/EmulatorTestAbstract.java` | Emulator 系列测试基类/公共断言 | `tests/_jediterm/emulator_test_base.gd`（待定） | todo |
+| `com/jediterm/EmulatorTestAbstract.java` | Emulator 系列测试基类/公共断言 | `tests/_jediterm/emulator_test_base.gd` | done |
 | `com/jediterm/util/TestSession.java` | 统一启动终端会话/喂入数据/取屏幕文本 | `tests/_jediterm/_test_session.gd` | done |
-| `com/jediterm/util/BackBufferTerminal.java` + `BackBufferDisplay.java` | 内存终端/显示实现，便于断言缓冲区 | `tests/_jediterm/back_buffer_terminal.gd`（待定） | todo |
-| `com/jediterm/util/ArrayBasedTextConsumer.java` | 消费渲染快照/样式文本断言 | `tests/_jediterm/array_based_text_consumer.gd`（待定） | todo |
-| `com/jediterm/util/CharBufferUtil.java` | CharBuffer/TerminalLine 等辅助构造 | `tests/_jediterm/char_buffer_util.gd`（待定） | todo |
-| `com/jediterm/terminal/model/TerminalLinesUtil.kt` | 行文本提取（断言 helper） | `tests/_jediterm/terminal_lines_util.gd`（待定） | todo |
-| `com/jediterm/terminal/model/hyperlinks/TestFilter.kt` + `TestSyncFilter.kt` | 超链接过滤器测试替身 | `tests/_jediterm/hyperlinks_test_filters.gd`（待定） | todo |
+| `com/jediterm/util/BackBufferTerminal.java` + `BackBufferDisplay.java` | 内存终端/显示实现，便于断言缓冲区 | `tests/_jediterm/back_buffer_terminal.gd` | done |
+| `com/jediterm/util/ArrayBasedTextConsumer.java` | 消费渲染快照/样式文本断言 | `tests/_jediterm/array_based_text_consumer.gd` | done |
+| `com/jediterm/util/CharBufferUtil.java` | CharBuffer/TerminalLine 等辅助构造 | `tests/_jediterm/char_buffer_util.gd` | done |
+| `com/jediterm/terminal/model/TerminalLinesUtil.kt` | 行文本提取（断言 helper） | `tests/_jediterm/terminal_lines_util.gd` | done |
+| `com/jediterm/terminal/model/hyperlinks/TestFilter.kt` + `TestSyncFilter.kt` | 超链接过滤器测试替身 | `tests/_jediterm/hyperlinks_test_filters.gd` | done |
 | `com/jediterm/TestPathsManager.java` + `lib/src/test/resources/testData/**` | vttest 数据与路径定位 | `tests/test_data/**` | done |
 
 ## Differences（愿景 vs 现实）
