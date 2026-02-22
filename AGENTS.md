@@ -32,6 +32,34 @@
 - SCons 默认就是增量；不要频繁清理 `addons/jediterm/native/build/`（会导致全量重编）。
 - `-RegenBindings` 很慢，只在升级 Godot / extension_api 变化时用。
 
+## ConPTY 管道根因记录（2026-02-23）
+
+### 症状
+`ConPTY.open()` 返回 OK，`ReadFile` 在读取管道时永久阻塞，`data_received` 信号收到 0 个 chunk。子进程（cmd.exe）启动后立即以退出码 0 退出。
+
+### 排查过程
+1. GDScript 层 hex dump 脚本确认：管道 handle 有效，`ReadFile` 阻塞直到 Godot 退出时 `CancelSynchronousIo` 中止（`GetLastError=995 ERROR_OPERATION_ABORTED`）
+2. C++ 层加 `WaitForSingleObject(pi.hProcess, 500)` 诊断：确认子进程在 500ms 内以 code=0 退出
+3. `Get-CimInstance Win32_Process` 确认 Godot 进程下无 cmd.exe 子进程存活
+
+### 根因
+`CreatePseudoConsole(size, in_read, out_write, 0, &hpc)` 之后立即 `CloseHandle(in_read); CloseHandle(out_write);`。
+
+ConPTY 内部的 conhost.exe 是异步启动的，它需要时间 duplicate 这两个管道 handle。在 Godot 这种复杂 GUI 宿主进程中，conhost 初始化比简单控制台程序慢。过早关闭导致：
+- conhost 拿到的 `in_read` 已失效 → 子进程 stdin 立即 EOF → cmd.exe 正常退出（code=0）
+- conhost 拿到的 `out_write` 已失效 → 我们的 `out_read` 端永远读不到数据
+
+EchoCon 等微软官方示例也在创建后立即关闭这些 handle，但它们是单线程简单控制台程序，conhost 初始化足够快，竞态窗口极小。
+
+### 修复
+不在 `open()` 中关闭 `in_read` / `out_write`，改为存入 `_h_in_read` / `_h_out_write` 成员变量，延迟到 `close()` 时统一关闭。
+
+### 教训
+- 异步子系统（conhost.exe）的 handle 生命周期不能假设"调用返回即 duplicate 完成"
+- 排查管道问题的正确顺序：先确认子进程是否存活（`WaitForSingleObject`），再看管道数据
+- 在 GDScript 层盲猜参数组合（`&hpc` vs `hpc`、管道方向、CreateProcess flags）是无效的；必须在 C++ 层加诊断日志定位到具体失败点
+
+
 ## Architecture Overview
 
 ### Areas

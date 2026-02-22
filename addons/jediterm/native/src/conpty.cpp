@@ -104,17 +104,17 @@ int ConPTY::open(int cols, int rows, const String &command) {
 	HPCON hpc = nullptr;
 	HRESULT hr = pCreatePseudoConsole(size, in_read, out_write, 0, &hpc);
 
-	// The pseudo console owns `in_read`/`out_write`; close our copies.
-	CloseHandle(in_read);
-	CloseHandle(out_write);
-	in_read = INVALID_HANDLE_VALUE;
-	out_write = INVALID_HANDLE_VALUE;
-
 	if (FAILED(hr) || hpc == nullptr) {
+		CloseHandle(in_read);
+		CloseHandle(out_write);
 		CloseHandle(in_write);
 		CloseHandle(out_read);
 		return ERR_CANT_OPEN;
 	}
+
+	// Keep `in_read` / `out_write` alive until close().
+	// ConPTY's backing conhost may duplicate these handles asynchronously; closing too early can
+	// cause the child process to observe EOF / broken pipes immediately.
 
 	// Prepare attribute list for STARTUPINFOEX.
 	SIZE_T attr_size = 0;
@@ -135,7 +135,8 @@ int ConPTY::open(int cols, int rows, const String &command) {
 		return ERR_CANT_OPEN;
 	}
 
-	if (!UpdateProcThreadAttribute(attr_list, 0, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE, hpc, sizeof(hpc), nullptr, nullptr)) {
+	// Attach the created pseudo console to the child process via STARTUPINFOEX.
+	if (!UpdateProcThreadAttribute(attr_list, 0, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE, hpc, sizeof(HPCON), nullptr, nullptr)) {
 		DeleteProcThreadAttributeList(attr_list);
 		::free(attr_list);
 		pClosePseudoConsole(hpc);
@@ -187,8 +188,8 @@ int ConPTY::open(int cols, int rows, const String &command) {
 	}
 
 	_hpc = hpc;
-	_h_in_read = nullptr;
-	_h_out_write = nullptr;
+	_h_in_read = in_read;
+	_h_out_write = out_write;
 	_h_in_write = in_write;
 	_h_out_read = out_read;
 	_h_process = pi.hProcess;
@@ -312,7 +313,7 @@ void ConPTY::_start_reader_thread() {
 	_stop_requested.store(false);
 	_reader_thread = new std::thread([this]() {
 		HANDLE h = (HANDLE)_h_out_read;
-		if (h == nullptr) {
+		if (h == nullptr || h == INVALID_HANDLE_VALUE) {
 			return;
 		}
 
