@@ -394,12 +394,8 @@ func _normalize_cursor_cell(raw: Vector2i) -> Vector2i:
 
 	# JediTerminal exposes cursor positions as 1-based (and can return w+1 when wrap_pending).
 	# Renderer operates on 0-based visible cells.
-	var x := int(raw.x)
-	var y := int(raw.y)
-	var looks_one_based := (x >= 1 and x <= w + 1 and y >= 1 and y <= h + 1)
-	if looks_one_based:
-		x -= 1
-		y -= 1
+	var x := int(raw.x) - 1
+	var y := int(raw.y) - 1
 
 	x = clampi(x, 0, w - 1)
 	y = clampi(y, 0, h - 1)
