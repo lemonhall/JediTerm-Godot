@@ -23,13 +23,18 @@ const DEFAULT_LATIN_MONO_FONT_PATH := "res://addons/jediterm/render/fonts/jet_br
 @export var selection_bg: Color = Color(0.2, 0.4, 1.0, 1.0)
 @export var cursor_bg: Color = Color(1.0, 1.0, 1.0, 1.0)
 
-@export var consume_keys: PackedInt32Array = PackedInt32Array([KEY_TAB, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_ENTER, KEY_KP_ENTER, KEY_ESCAPE])
+@export var consume_keys: PackedInt32Array = PackedInt32Array([KEY_TAB, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_ENTER, KEY_KP_ENTER, KEY_ESCAPE, KEY_BACKSPACE])
 
 var _text_buffer: RefCounted = null
 var _scroll_origin: int = 0
 var _terminal: RefCounted = null
 var _terminal_output = null
 var _fallback_terminal_font: Font = null
+var _debug_redraw_request_count: int = 0
+var _debug_last_consumed_keycode: int = -1
+
+func _init() -> void:
+	focus_mode = Control.FOCUS_ALL
 
 func _ready() -> void:
 	if auto_cell_metrics:
@@ -41,14 +46,14 @@ func _notification(what: int) -> void:
 
 func set_text_buffer(text_buffer: RefCounted) -> void:
 	_text_buffer = text_buffer
-	queue_redraw()
+	_request_redraw()
 
 func get_text_buffer() -> RefCounted:
 	return _text_buffer
 
 func set_scroll_origin(scroll_origin: int) -> void:
 	_scroll_origin = int(scroll_origin)
-	queue_redraw()
+	_request_redraw()
 
 func get_scroll_origin() -> int:
 	return int(_scroll_origin)
@@ -65,7 +70,29 @@ func set_terminal_font(font: Font, font_size: int = 0) -> void:
 		terminal_font_size = int(font_size)
 	if auto_cell_metrics:
 		_update_cell_metrics()
+	_request_redraw()
+
+func _process(_delta: float) -> void:
+	if _text_buffer == null:
+		return
+	if not bool(_text_buffer.has_method("consume_dirty_rows")):
+		return
+	var dirty: PackedInt32Array = PackedInt32Array(_text_buffer.consume_dirty_rows())
+	if int(dirty.size()) > 0:
+		_request_redraw()
+
+func _request_redraw() -> void:
+	_debug_redraw_request_count += 1
 	queue_redraw()
+
+func _debug_reset_redraw_request_count() -> void:
+	_debug_redraw_request_count = 0
+
+func _debug_get_redraw_request_count() -> int:
+	return int(_debug_redraw_request_count)
+
+func _debug_get_last_consumed_keycode() -> int:
+	return int(_debug_last_consumed_keycode)
 
 func build_draw_plan() -> RefCounted:
 	var snap := RenderSnapshot.new(_text_buffer, _scroll_origin)
@@ -99,9 +126,13 @@ func handle_key_event(event: InputEventKey) -> bool:
 			bytes = PackedByteArray([9])
 		elif keycode == KEY_ESCAPE:
 			bytes = PackedByteArray([int(Ascii.ESC_CHAR)])
-		elif int(event.unicode) > 0:
-			var ch := String.chr(int(event.unicode))
-			return _send_string(ch)
+		else:
+			var ctrl_code := _try_get_ctrl_combo_byte(event)
+			if ctrl_code >= 0:
+				bytes = PackedByteArray([int(ctrl_code)])
+			elif int(event.unicode) > 0:
+				var ch := String.chr(int(event.unicode))
+				return _send_string(ch)
 
 	return _send_bytes(bytes)
 
@@ -111,6 +142,7 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		if handle_key_event(event):
 			if _should_consume_keycode(int(event.keycode)):
+				_debug_last_consumed_keycode = int(event.keycode)
 				accept_event()
 
 func _draw() -> void:
@@ -192,6 +224,22 @@ func _map_godot_keycode_to_terminal_keycode(godot_keycode: int) -> int:
 			return int(Ascii.BS_CHAR)
 		_:
 			return -1
+
+func _try_get_ctrl_combo_byte(event: InputEventKey) -> int:
+	if event == null or not bool(event.ctrl_pressed):
+		return -1
+	var cp := 0
+	if int(event.unicode) > 0:
+		cp = int(event.unicode)
+	else:
+		cp = int(event.keycode)
+	# Normalize a-z to A-Z.
+	if cp >= 0x61 and cp <= 0x7A:
+		cp -= 0x20
+	# Support Ctrl+@, Ctrl+A..Z, Ctrl+[\\]^_
+	if cp >= 0x40 and cp <= 0x5F:
+		return int(cp & 0x1F)
+	return -1
 
 func _get_draw_font() -> Font:
 	if terminal_font != null:

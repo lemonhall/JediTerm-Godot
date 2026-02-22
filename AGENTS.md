@@ -64,6 +64,12 @@
   - suite：`scripts\run_godot_tests.ps1 -Suite jediterm`
   - 卡死保护：设置 `$env:GODOT_TEST_TIMEOUT_SEC`
 
+## Godot Resource UID（`.uid`）约定
+
+- 不要手写/伪造 `*.uid` 文件内容（例如随便填 `uid://...`）；这会导致 Godot 报错 `Unrecognized UID`。
+- 新增脚本/资源时，默认**不需要**人工创建对应的 `*.uid`：等你打开 Godot 编辑器后，它会按项目状态自动生成/修复。
+- 本仓库的自动化/Headless 测试应以 `res://...` 路径加载脚本为主，不依赖新生成的 `.uid` 文件。
+
 ## 沟通与执行偏好（柠檬叔）
 
 - 默认**持续推进**：只要目标是“完成 v1 / 里程碑”，就连续做下去，直到该里程碑 DoD 达成再汇报。

@@ -28,6 +28,7 @@ var _lock_depth: int = 0
 var _model_listeners: Array = []
 var _history_buffer_listeners: Array = []
 var _changes_listeners: Array = []
+var _dirty_rows: PackedByteArray
 
 func _init(width: int, height: int, _state: RefCounted) -> void:
 	_width = maxi(0, width)
@@ -41,6 +42,8 @@ func _init(width: int, height: int, _state: RefCounted) -> void:
 	_alt_line_lengths = _make_blank_line_lengths()
 	_main_wrapped_flags = _make_blank_wrap_flags()
 	_alt_wrapped_flags = _make_blank_wrap_flags()
+	_dirty_rows = PackedByteArray()
+	_dirty_rows.resize(_height)
 
 func get_screen_lines() -> String:
 	var out := ""
@@ -117,6 +120,7 @@ func use_alternate_buffer(enabled: bool) -> void:
 		_alt_line_lengths = _make_blank_line_lengths()
 		_alt_wrapped_flags = _make_blank_wrap_flags()
 		_alt_storage_size = 0
+	mark_all_dirty()
 
 func get_history_lines_count() -> int:
 	return int(_history_lines.size())
@@ -329,6 +333,7 @@ func clearLines(startRow: int, endRow: int) -> void:
 	for y in range(from_y, to_y + 1):
 		_clear_row_full(y)
 		set_line_wrapped(y, false)
+		mark_row_dirty(y)
 
 func moveScreenLinesToHistory() -> void:
 	if _height <= 0:
@@ -357,6 +362,7 @@ func write_codepoint(x: int, y: int, cp: int, style = null) -> void:
 	else:
 		_main_line_lengths[y] = maxi(int(_main_line_lengths[y]), x + 1)
 		_main_storage_size = maxi(_main_storage_size, y + 1)
+	mark_row_dirty(y)
 
 func set_line_wrapped(y: int, wrapped: bool) -> void:
 	if y < 0 or y >= _height:
@@ -385,6 +391,7 @@ func scroll_region_up(top: int, bottom: int, lines: int) -> void:
 			styles[y] = _make_blank_style_row()
 			lengths[y] = 0
 			wraps[y] = 0
+		_mark_rows_dirty(top, bottom)
 		return
 
 	for _i in lines:
@@ -399,6 +406,7 @@ func scroll_region_up(top: int, bottom: int, lines: int) -> void:
 		styles[bottom] = _make_blank_style_row()
 		lengths[bottom] = 0
 		wraps[bottom] = 0
+	_mark_rows_dirty(top, bottom)
 
 func scroll_region_down(top: int, bottom: int, lines: int) -> void:
 	if lines <= 0:
@@ -418,6 +426,7 @@ func scroll_region_down(top: int, bottom: int, lines: int) -> void:
 			styles[y] = _make_blank_style_row()
 			lengths[y] = 0
 			wraps[y] = 0
+		_mark_rows_dirty(top, bottom)
 		return
 
 	for _i in lines:
@@ -430,6 +439,7 @@ func scroll_region_down(top: int, bottom: int, lines: int) -> void:
 		styles[top] = _make_blank_style_row()
 		lengths[top] = 0
 		wraps[top] = 0
+	_mark_rows_dirty(top, bottom)
 
 func insert_lines(y: int, count: int, top: int, bottom: int) -> void:
 	if count <= 0:
@@ -451,6 +461,7 @@ func insert_lines(y: int, count: int, top: int, bottom: int) -> void:
 			else:
 				_main_line_lengths[row] = 0
 				_main_wrapped_flags[row] = 0
+		_mark_rows_dirty(y, bottom)
 		return
 
 	var lengths := _alt_line_lengths if _using_alt else _main_line_lengths
@@ -466,6 +477,7 @@ func insert_lines(y: int, count: int, top: int, bottom: int) -> void:
 		styles[row] = _make_blank_style_row()
 		lengths[row] = 0
 		wraps[row] = 0
+	_mark_rows_dirty(y, bottom)
 
 func delete_lines(y: int, count: int, top: int, bottom: int) -> void:
 	if count <= 0:
@@ -491,6 +503,7 @@ func delete_lines(y: int, count: int, top: int, bottom: int) -> void:
 		styles[row] = _make_blank_style_row()
 		lengths[row] = 0
 		wraps[row] = 0
+	_mark_rows_dirty(y, bottom)
 
 func delete_characters(y: int, x: int, count: int) -> void:
 	if count <= 0:
@@ -516,6 +529,7 @@ func delete_characters(y: int, x: int, count: int) -> void:
 	lengths[y] = _recompute_line_length(y)
 	if int(lengths[y]) == 0:
 		wraps[y] = 0
+	mark_row_dirty(y)
 
 func erase_characters(y: int, x: int, count: int) -> void:
 	if count <= 0:
@@ -538,6 +552,7 @@ func erase_characters(y: int, x: int, count: int) -> void:
 	lengths[y] = _recompute_line_length(y)
 	if int(lengths[y]) == 0:
 		wraps[y] = 0
+	mark_row_dirty(y)
 
 func erase_in_line(mode: int, cursor_x: int, cursor_y: int) -> void:
 	if _width <= 0 or _height <= 0:
@@ -562,6 +577,7 @@ func erase_in_line(mode: int, cursor_x: int, cursor_y: int) -> void:
 		_:
 			_clear_row_range(y, x, _width - 1)
 			lengths[y] = _recompute_line_length(y)
+	mark_row_dirty(y)
 
 func erase_in_display(mode: int, cursor_x: int, cursor_y: int) -> void:
 	if _width <= 0 or _height <= 0:
@@ -585,6 +601,7 @@ func erase_in_display(mode: int, cursor_x: int, cursor_y: int) -> void:
 				_clear_row_full(row)
 				lengths[row] = 0
 				wraps[row] = 0
+			_mark_rows_dirty(y, _height - 1)
 		1:
 			# Start of screen to cursor.
 			for row in range(0, y):
@@ -593,17 +610,20 @@ func erase_in_display(mode: int, cursor_x: int, cursor_y: int) -> void:
 				wraps[row] = 0
 			_clear_row_range(y, 0, x)
 			lengths[y] = _recompute_line_length(y)
+			_mark_rows_dirty(0, y)
 		2:
 			# Entire screen.
 			for row in range(0, _height):
 				_clear_row_full(row)
 				lengths[row] = 0
 				wraps[row] = 0
+			_mark_rows_dirty(0, _height - 1)
 		_:
 			for row in range(0, _height):
 				_clear_row_full(row)
 				lengths[row] = 0
 				wraps[row] = 0
+			_mark_rows_dirty(0, _height - 1)
 
 func clear_screen_only() -> void:
 	erase_in_display(2, 0, 0)
@@ -623,6 +643,7 @@ func clear_screen_buffer_storage() -> void:
 		_alt_storage_size = 0
 	else:
 		_main_storage_size = 0
+	_mark_rows_dirty(0, _height - 1)
 
 func clear_screen_and_history_buffers() -> void:
 	clear_screen_buffer_storage()
@@ -649,6 +670,7 @@ func insert_blank_characters(y: int, x: int, count: int) -> void:
 
 	var lengths := _alt_line_lengths if _using_alt else _main_line_lengths
 	lengths[y] = _recompute_line_length(y)
+	mark_row_dirty(y)
 
 func _clear_row_full(y: int) -> void:
 	if y < 0 or y >= _height:
@@ -658,6 +680,40 @@ func _clear_row_full(y: int) -> void:
 	for i in _width:
 		row[i] = SPACE
 		style_row[i] = TextStyle.EMPTY
+
+func mark_all_dirty() -> void:
+	_dirty_rows.resize(_height)
+	for y in _dirty_rows.size():
+		_dirty_rows[y] = 1
+
+func mark_row_dirty(y: int) -> void:
+	if y < 0 or y >= _height:
+		return
+	if _dirty_rows.size() != _height:
+		_dirty_rows.resize(_height)
+	_dirty_rows[y] = 1
+
+func consume_dirty_rows() -> PackedInt32Array:
+	if _dirty_rows.size() != _height:
+		_dirty_rows.resize(_height)
+	var out := PackedInt32Array()
+	for y in _dirty_rows.size():
+		if int(_dirty_rows[y]) != 0:
+			out.append(int(y))
+			_dirty_rows[y] = 0
+	return out
+
+func _mark_rows_dirty(y_from: int, y_to: int) -> void:
+	if _height <= 0:
+		return
+	var from_y := clampi(y_from, 0, _height - 1)
+	var to_y := clampi(y_to, 0, _height - 1)
+	if from_y > to_y:
+		var tmp := from_y
+		from_y = to_y
+		to_y = tmp
+	for y in range(from_y, to_y + 1):
+		mark_row_dirty(y)
 
 func _clear_row_range(y: int, x_from: int, x_to: int) -> void:
 	if y < 0 or y >= _height:
@@ -844,6 +900,7 @@ func resize_with_main_cursor(new_columns: int, new_rows: int, active_cursor_x_1:
 	var main_res: Dictionary = resize(new_columns, new_rows, main_cursor_x_1, main_cursor_y_1)
 	_restore_alt_from_snapshot(snap, _width, _height)
 	_using_alt = was_alt
+	mark_all_dirty()
 	return {
 		"cursor_x": clampi(int(active_cursor_x_1), 1, _width),
 		"cursor_y": clampi(int(active_cursor_y_1), 1, _height),
@@ -1007,6 +1064,7 @@ func resize(new_columns: int, new_rows: int, cursor_x_1: int, cursor_y_1: int) -
 		_alt_styles = _make_blank_style_screen()
 		_alt_line_lengths = _make_blank_line_lengths()
 		_alt_wrapped_flags = _make_blank_wrap_flags()
+		mark_all_dirty()
 		return {"cursor_x": clampi(cursor_x_1, 1, _width), "cursor_y": clampi(cursor_y_1, 1, _height)}
 
 	var history_size := int(_history_lines.size())
@@ -1193,6 +1251,7 @@ func resize(new_columns: int, new_rows: int, cursor_x_1: int, cursor_y_1: int) -
 			continue
 		p.x = clampi(int(pm.new_x0), 0, _width)
 		p.y = int(pm.new_abs_y) - screen_start_ind
+	mark_all_dirty()
 	return {
 		"cursor_x": clampi(cursor_new_x + 1, 1, _width),
 		"cursor_y": clampi(cursor_new_y + 1, 1, _height),
