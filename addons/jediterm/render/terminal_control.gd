@@ -17,6 +17,7 @@ const DEFAULT_LATIN_MONO_FONT_PATH := "res://addons/jediterm/render/fonts/jet_br
 @export var cell_width: int = 10
 @export var cell_height: int = 20
 @export var auto_cell_metrics: bool = true
+@export var line_height_scale: float = 1.15
 
 @export var terminal_font: Font = null
 @export var terminal_font_size: int = 32
@@ -260,13 +261,17 @@ func _draw() -> void:
 	# Rendering text is intentionally minimal in M1; font metrics will be refined later.
 	var font := _get_draw_font()
 	var font_size := _get_draw_font_size()
-	var ascent := float(font.get_ascent(font_size)) if font != null else float(cell_height) * 0.8
+	var ascent := float(font.get_ascent(font_size)) if font != null and font.has_method("get_ascent") else float(cell_height) * 0.8
+	var descent := float(font.get_descent(font_size)) if font != null and font.has_method("get_descent") else 0.0
+	var content_h := maxf(0.0, ascent + descent)
+	var leading := maxf(0.0, float(cell_height) - content_h)
+	var baseline_offset := leading * 0.5 + ascent
 	for op in ops:
 		if String(op.get("type", "")) != "glyph":
 			continue
 		var cp := int(op.cp)
 		var s := String.chr(cp)
-		draw_string(font, Vector2(float(op.x), float(op.y) + ascent), s, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(op.color))
+		draw_string(font, Vector2(float(op.x), float(op.y) + baseline_offset), s, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(op.color))
 
 func _send_bytes(bytes: PackedByteArray) -> bool:
 	if bytes.is_empty():
@@ -404,7 +409,10 @@ func _update_cell_metrics() -> void:
 		h = maxf(h, float(v.y))
 	if h <= 0.0:
 		h = float(cell_height)
-	cell_height = maxi(1, int(ceilf(h)))
+	var scale := float(line_height_scale)
+	if scale <= 0.01:
+		scale = 1.0
+	cell_height = maxi(1, int(ceilf(h * scale)))
 
 func _measure_text_width(font: Font, font_size: int, s: String) -> float:
 	if font == null or s == "":
