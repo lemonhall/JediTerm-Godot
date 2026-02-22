@@ -97,15 +97,23 @@ func _draw() -> void:
 		return
 
 	var ops: Array = ops_any
+	# IMPORTANT: draw all backgrounds first, then glyphs.
+	# Otherwise wide glyphs (e.g. CJK) can be partially overwritten by the next cell background.
 	for op in ops:
-		var t := String(op.get("type", ""))
-		if t == "bg":
-			draw_rect(Rect2(float(op.x), float(op.y), float(op.w), float(op.h)), Color(op.color), true)
-		elif t == "glyph":
-			# Rendering text is intentionally minimal in M1; font metrics will be refined later.
-			var cp := int(op.cp)
-			var s := String.chr(cp)
-			draw_string(get_theme_default_font(), Vector2(float(op.x), float(op.y) + float(cell_height) * 0.8), s, HORIZONTAL_ALIGNMENT_LEFT, -1, get_theme_default_font_size(), Color(op.color))
+		if String(op.get("type", "")) != "bg":
+			continue
+		draw_rect(Rect2(float(op.x), float(op.y), float(op.w), float(op.h)), Color(op.color), true)
+
+	# Rendering text is intentionally minimal in M1; font metrics will be refined later.
+	var font := get_theme_default_font()
+	var font_size := get_theme_default_font_size()
+	var ascent := float(font.get_ascent(font_size)) if font != null else float(cell_height) * 0.8
+	for op in ops:
+		if String(op.get("type", "")) != "glyph":
+			continue
+		var cp := int(op.cp)
+		var s := String.chr(cp)
+		draw_string(font, Vector2(float(op.x), float(op.y) + ascent), s, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(op.color))
 
 func _send_bytes(bytes: PackedByteArray) -> bool:
 	if bytes.is_empty():
