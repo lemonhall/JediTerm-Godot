@@ -77,7 +77,7 @@ Examples:
   scripts/run_godot_tests.ps1 -Suite jediterm
 
 Suites:
-  all (default), addons, jediterm
+  all (default), addons, jediterm, render
 
 Notes:
   - Prefer the *console* exe for reliable headless output.
@@ -124,6 +124,7 @@ if (![string]::IsNullOrWhiteSpace($One)) {
     "all" { $suiteDir = Join-Path $RootDir "tests" }
     "addons" { $suiteDir = Join-Path $RootDir "tests\\addons" }
     "jediterm" { $suiteDir = Join-Path $RootDir "tests\\addons\\jediterm" }
+    "render" { $suiteDir = Join-Path $RootDir "tests\\addons\\jediterm_render" }
     default {
       Write-Host ("Unknown suite: {0}" -f $Suite)
       Usage

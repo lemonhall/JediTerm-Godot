@@ -1,4 +1,4 @@
-extends RefCounted
+extends "res://addons/jediterm/core/typeahead/debouncer.gd"
 
 var _runnable = null
 var _delay_nanos: int = 0
@@ -9,15 +9,15 @@ func _init(runnable = null, delay: int = 0, _executor_service_manager = null) ->
 	_runnable = runnable
 	_delay_nanos = maxi(0, int(delay))
 
-func call() -> void:
+func debounce_call() -> void:
 	_active = true
 	_due_time_nanos = int(Time.get_ticks_usec()) * 1000 + _delay_nanos
 
-func terminateCall() -> void:
+func terminate_debounce_call() -> void:
 	_active = false
 
 func cancel() -> void:
-	terminateCall()
+	terminate_debounce_call()
 
 func run() -> void:
 	# Manual "tick": invoke callback if due.
