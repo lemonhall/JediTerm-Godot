@@ -28,7 +28,10 @@ class LoopbackTtyConnector extends RefCounted:
 
 @export var terminal_cols: int = 80
 @export var terminal_rows: int = 24
-@export var terminal_font_px: int = 32
+@export var terminal_font_px: int = 24
+@export var viewport_pixel_size: Vector2i = Vector2i(1024, 640)
+@export var auto_compute_term_size: bool = true
+@export var fit_viewport_to_cells: bool = true
 
 @export var freeze_camera_controls: bool = false
 
@@ -62,7 +65,9 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	var fps := int(Engine.get_frames_per_second())
-	info.text = "Render v2 M3 3D demo | FPS:%d | RMB orbit, MMB pan, Wheel zoom | Paste: Ctrl+Shift+V" % fps
+	var cols := int(_buf.get_width()) if _buf != null and _buf.has_method("get_width") else -1
+	var rows := int(_buf.get_height()) if _buf != null and _buf.has_method("get_height") else -1
+	info.text = "Render v2 M3 3D demo | %dx%d | Font:%d | FPS:%d | RMB orbit, MMB pan, Wheel zoom | Paste: Ctrl+Shift+V" % [cols, rows, int(terminal_font_px), fps]
 
 func _unhandled_input(event: InputEvent) -> void:
 	var c := _get_terminal_control()
@@ -113,8 +118,39 @@ func _setup_terminal() -> void:
 	if terminal_surface == null:
 		return
 
+	var control := _get_terminal_control()
+	if control == null:
+		return
+
+	var mono_font: Font = null
+	if ResourceLoader.exists(DEFAULT_TERMINAL_FONT_PATH):
+		mono_font = load(DEFAULT_TERMINAL_FONT_PATH)
+	elif ResourceLoader.exists(DEFAULT_TERMINAL_FONT_ALT_PATH):
+		mono_font = load(DEFAULT_TERMINAL_FONT_ALT_PATH)
+	elif ResourceLoader.exists(DEFAULT_LATIN_MONO_FONT_PATH):
+		mono_font = load(DEFAULT_LATIN_MONO_FONT_PATH)
+	if mono_font != null and control.has_method("set_terminal_font"):
+		control.set_terminal_font(mono_font, int(terminal_font_px))
+
+	var cw := int(control.cell_width) if control.has_method("cell_width") else 10
+	var ch := int(control.cell_height) if control.has_method("cell_height") else 20
+	cw = maxi(1, cw)
+	ch = maxi(1, ch)
+
+	var view_size := Vector2i(viewport_pixel_size)
+	view_size.x = maxi(cw, int(view_size.x))
+	view_size.y = maxi(ch, int(view_size.y))
+
 	var cols := maxi(5, int(terminal_cols))
 	var rows := maxi(2, int(terminal_rows))
+	if auto_compute_term_size:
+		cols = maxi(5, int(floor(float(view_size.x) / float(cw))))
+		rows = maxi(2, int(floor(float(view_size.y) / float(ch))))
+	if fit_viewport_to_cells:
+		view_size = Vector2i(cols * cw, rows * ch)
+
+	if terminal_surface.has_method("set_viewport_size"):
+		terminal_surface.set_viewport_size(view_size)
 
 	var state := StyleState.new()
 	_buf = TerminalTextBuffer.new(cols, rows, state)
@@ -130,23 +166,6 @@ func _setup_terminal() -> void:
 		terminal_surface.set_terminal_output(_starter)
 	if terminal_surface.has_method("set_text_buffer"):
 		terminal_surface.set_text_buffer(_buf)
-
-	var control := _get_terminal_control()
-	if control != null:
-		var mono_font: Font = null
-		if ResourceLoader.exists(DEFAULT_TERMINAL_FONT_PATH):
-			mono_font = load(DEFAULT_TERMINAL_FONT_PATH)
-		elif ResourceLoader.exists(DEFAULT_TERMINAL_FONT_ALT_PATH):
-			mono_font = load(DEFAULT_TERMINAL_FONT_ALT_PATH)
-		elif ResourceLoader.exists(DEFAULT_LATIN_MONO_FONT_PATH):
-			mono_font = load(DEFAULT_LATIN_MONO_FONT_PATH)
-		if mono_font != null and control.has_method("set_terminal_font"):
-			control.set_terminal_font(mono_font, int(terminal_font_px))
-
-		var cw := int(control.cell_width) if control.has_method("cell_width") else 10
-		var ch := int(control.cell_height) if control.has_method("cell_height") else 20
-		if terminal_surface.has_method("set_viewport_size"):
-			terminal_surface.set_viewport_size(Vector2i(cols * cw, rows * ch))
 
 	_write_header()
 	_prompt()

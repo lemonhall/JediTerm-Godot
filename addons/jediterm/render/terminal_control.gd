@@ -396,7 +396,15 @@ func _update_cell_metrics() -> void:
 	var h := 0.0
 	if font.has_method("get_height"):
 		h = float(font.get_height(font_size))
-	cell_height = maxi(1, int(ceilf(h if h > 0.0 else float(cell_height))))
+	var ascent := float(font.get_ascent(font_size)) if font.has_method("get_ascent") else 0.0
+	var descent := float(font.get_descent(font_size)) if font.has_method("get_descent") else 0.0
+	h = maxf(h, ascent + descent)
+	if font.has_method("get_string_size"):
+		var v: Vector2 = font.get_string_size("W", HORIZONTAL_ALIGNMENT_LEFT, -1, int(font_size))
+		h = maxf(h, float(v.y))
+	if h <= 0.0:
+		h = float(cell_height)
+	cell_height = maxi(1, int(ceilf(h)))
 
 func _measure_text_width(font: Font, font_size: int, s: String) -> float:
 	if font == null or s == "":

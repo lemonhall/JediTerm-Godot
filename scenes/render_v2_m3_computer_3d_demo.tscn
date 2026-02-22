@@ -34,7 +34,7 @@ mesh = SubResource("QuadMesh_1")
 
 [node name="TerminalViewportSurface" type="Node" parent="."]
 script = ExtResource("2")
-viewport_size = Vector2i(800, 480)
+viewport_size = Vector2i(1024, 640)
 render_update_mode = 3
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
