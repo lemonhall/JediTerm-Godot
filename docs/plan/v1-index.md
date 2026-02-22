@@ -30,6 +30,7 @@
 ## Plan Index
 
 - `docs/plan/v1-jediterm-tests-suite-port.md`
+- 场景级对照清单：`docs/plan/v1-upstream-tests-scenarios-checklist.md`
 - 差距清单（函数级）：`docs/plan/v1-gap-upstream-function-align.md`
 
 ## Traceability Matrix（上游测试 → 目标测试 → 目标实现）

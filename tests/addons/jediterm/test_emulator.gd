@@ -2,6 +2,7 @@ extends SceneTree
 
 const T := preload("res://tests/_test_util.gd")
 const TestSession := preload("res://tests/_jediterm/_test_session.gd")
+const JediColorPalette := preload("res://addons/jediterm/terminal/emulator/color_palette.gd")
 
 const ESC := "\u001b"
 
@@ -59,11 +60,9 @@ func _tty_stream(s: String) -> String:
 	return normalized.replace("\n", "\r\n")
 
 func _do_snapshot_test(name: String, width: int = 80, height: int = 24, expected_override: String = "") -> bool:
-	var session := TestSession.new(width, height)
-	var input_text := _read_test_data_utf8(name + ".txt")
-	if input_text == "":
+	var session = _build_test_session_from_test_data(name, width, height)
+	if session == null:
 		return false
-	session.process(_tty_stream(input_text))
 
 	var expected := expected_override
 	if expected == "":
@@ -73,6 +72,21 @@ func _do_snapshot_test(name: String, width: int = 80, height: int = 24, expected
 		T.fail_and_quit(self, "Missing terminal_text_buffer.get_screen_lines()")
 		return false
 	return T.require_eq(self, session.terminal_text_buffer.get_screen_lines(), expected, "snapshot: " + name)
+
+func _build_test_session_from_test_data(name: String, width: int, height: int):
+	var session := TestSession.new(width, height)
+	var input_text := _read_test_data_utf8(name + ".txt")
+	if input_text == "":
+		return null
+	session.process(_tty_stream(input_text))
+	return session
+
+func _assert_style_color(style: Dictionary, fg, bg, msg: String = "") -> bool:
+	if style == null:
+		return T.require_true(self, false, msg + " style is null")
+	if not T.require_eq(self, style.get("foreground", null), fg, msg + " foreground"):
+		return false
+	return T.require_eq(self, style.get("background", null), bg, msg + " background")
 
 func _assert_screen_lines(session: RefCounted, expected: Array, msg: String = "") -> bool:
 	if not session.terminal_text_buffer.has_method("get_screen_lines_storage_texts"):
@@ -93,7 +107,26 @@ func _test_midnight_commander_on_vt100() -> bool:
 	return _do_snapshot_test("testMidnightCommanderOnVT100")
 
 func _test_midnight_commander_on_xterm() -> bool:
-	return _do_snapshot_test("testMidnightCommanderOnXTerm")
+	var session = _build_test_session_from_test_data("testMidnightCommanderOnXTerm", 80, 24)
+	if session == null:
+		return false
+	var expected := _normalize_expected(_read_test_data_utf8("testMidnightCommanderOnXTerm.after.txt"))
+	if not T.require_eq(self, session.terminal_text_buffer.get_screen_lines(), expected, "snapshot: testMidnightCommanderOnXTerm"):
+		return false
+
+	if not session.terminal_text_buffer.has_method("get_style_at"):
+		T.fail_and_quit(self, "Missing terminal_text_buffer.get_style_at()")
+		return false
+
+	# Upstream asserts specific indexed colors at a few coordinates after replaying the snapshot.
+	var style_8_2: Dictionary = session.terminal_text_buffer.get_style_at(8, 2)
+	if not _assert_style_color(style_8_2, JediColorPalette.getIndexedTerminalColor(3), JediColorPalette.getIndexedTerminalColor(4), "mc xterm (8,2)"):
+		return false
+	var style_23_4: Dictionary = session.terminal_text_buffer.get_style_at(23, 4)
+	if not _assert_style_color(style_23_4, JediColorPalette.getIndexedTerminalColor(7), JediColorPalette.getIndexedTerminalColor(4), "mc xterm (23,4)"):
+		return false
+	var style_2_0: Dictionary = session.terminal_text_buffer.get_style_at(2, 0)
+	return _assert_style_color(style_2_0, JediColorPalette.getIndexedTerminalColor(0), JediColorPalette.getIndexedTerminalColor(6), "mc xterm (2,0)")
 
 func _test_erase_beyond_terminal_width() -> bool:
 	return _do_snapshot_test("testEraseBeyondTerminalWidth")
