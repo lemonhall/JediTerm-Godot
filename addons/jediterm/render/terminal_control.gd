@@ -7,12 +7,16 @@ const Ascii := preload("res://addons/jediterm/core/ascii.gd")
 const InputEventMask := preload("res://addons/jediterm/core/input_event.gd")
 const KeyEventVK := preload("res://addons/jediterm/core/key_event.gd")
 
+const DEFAULT_TERMINAL_FONT_PATH := "res://addons/jediterm/render/fonts/MapleMono-CN-Regular.ttf"
+const DEFAULT_TERMINAL_FONT_ALT_PATH := "res://addons/jediterm/render/fonts/SarasaMonoSC-Regular.ttf"
+const DEFAULT_LATIN_MONO_FONT_PATH := "res://addons/jediterm/render/fonts/jet_brains_mono_regular.ttf"
+
 @export var cell_width: int = 10
 @export var cell_height: int = 20
 @export var auto_cell_metrics: bool = true
 
 @export var terminal_font: Font = null
-@export var terminal_font_size: int = 0
+@export var terminal_font_size: int = 32
 
 @export var default_fg: Color = Color.WHITE
 @export var default_bg: Color = Color.BLACK
@@ -25,6 +29,7 @@ var _text_buffer: RefCounted = null
 var _scroll_origin: int = 0
 var _terminal: RefCounted = null
 var _terminal_output = null
+var _fallback_terminal_font: Font = null
 
 func _ready() -> void:
 	if auto_cell_metrics:
@@ -189,7 +194,24 @@ func _map_godot_keycode_to_terminal_keycode(godot_keycode: int) -> int:
 			return -1
 
 func _get_draw_font() -> Font:
-	return terminal_font if terminal_font != null else get_theme_default_font()
+	if terminal_font != null:
+		return terminal_font
+	return _get_fallback_terminal_font()
+
+func _get_fallback_terminal_font() -> Font:
+	if _fallback_terminal_font != null:
+		return _fallback_terminal_font
+
+	if ResourceLoader.exists(DEFAULT_TERMINAL_FONT_PATH):
+		_fallback_terminal_font = load(DEFAULT_TERMINAL_FONT_PATH)
+	elif ResourceLoader.exists(DEFAULT_TERMINAL_FONT_ALT_PATH):
+		_fallback_terminal_font = load(DEFAULT_TERMINAL_FONT_ALT_PATH)
+	elif ResourceLoader.exists(DEFAULT_LATIN_MONO_FONT_PATH):
+		_fallback_terminal_font = load(DEFAULT_LATIN_MONO_FONT_PATH)
+	else:
+		_fallback_terminal_font = get_theme_default_font()
+
+	return _fallback_terminal_font
 
 func _get_draw_font_size() -> int:
 	if int(terminal_font_size) > 0:

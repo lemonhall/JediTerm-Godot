@@ -12,6 +12,8 @@ const TextStyle := preload("res://addons/jediterm/terminal/text_style.gd")
 
 var _terminal: RefCounted = null
 var _last_sec: int = -1
+var _font_label: String = ""
+var _font_px: int = 0
 
 func _ready() -> void:
 	var cols := 80
@@ -29,10 +31,25 @@ func _ready() -> void:
 
 	terminal_control.position = Vector2(16, 40)
 
-	# Use a monospaced font for proper grid alignment (Latin). CJK shaping/width still depends on fallback fonts.
-	var mono_font: Font = load("res://addons/jediterm/render/fonts/jet_brains_mono_regular.ttf") if ResourceLoader.exists("res://addons/jediterm/render/fonts/jet_brains_mono_regular.ttf") else null
+	# Default terminal font: Maple Mono CN (Latin + CJK).
+	# Alternatives: Sarasa Mono SC (strict 1:2 ratio), JetBrains Mono (pure Latin recommendation).
+	var font_px := 32
+	var maple_path := "res://addons/jediterm/render/fonts/MapleMono-CN-Regular.ttf"
+	var sarasa_path := "res://addons/jediterm/render/fonts/SarasaMonoSC-Regular.ttf"
+	var jbm_path := "res://addons/jediterm/render/fonts/jet_brains_mono_regular.ttf"
+	var mono_font: Font = null
+	if ResourceLoader.exists(maple_path):
+		mono_font = load(maple_path)
+		_font_label = "MapleMono-CN"
+	elif ResourceLoader.exists(sarasa_path):
+		mono_font = load(sarasa_path)
+		_font_label = "SarasaMonoSC"
+	elif ResourceLoader.exists(jbm_path):
+		mono_font = load(jbm_path)
+		_font_label = "JetBrainsMono"
+	_font_px = int(font_px)
 	if mono_font != null and terminal_control.has_method("set_terminal_font"):
-		terminal_control.set_terminal_font(mono_font, 16)
+		terminal_control.set_terminal_font(mono_font, int(font_px))
 
 	terminal_control.custom_minimum_size = Vector2(cols * terminal_control.cell_width, rows * terminal_control.cell_height)
 	terminal_control.size = terminal_control.custom_minimum_size
@@ -43,9 +60,11 @@ func _ready() -> void:
 	terminal_control.queue_redraw()
 
 func _process(_delta: float) -> void:
-	info.text = "Render v2 sample | FPS: %d | Focus: %s (Tab/方向键/Enter/Esc 已吞键路径)" % [
+	info.text = "Render v2 sample | FPS: %d | Focus: %s | Font: %s@%d (Tab/方向键/Enter/Esc 已吞键路径)" % [
 		int(Engine.get_frames_per_second()),
 		("YES" if terminal_control.has_focus() else "NO"),
+		_font_label,
+		_font_px,
 	]
 
 	var sec := int(Time.get_ticks_msec() / 1000)
