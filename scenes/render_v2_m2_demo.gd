@@ -15,6 +15,13 @@ const DEFAULT_TERMINAL_FONT_PATH := "res://addons/jediterm/render/fonts/MapleMon
 const DEFAULT_TERMINAL_FONT_ALT_PATH := "res://addons/jediterm/render/fonts/SarasaMonoSC-Regular.ttf"
 const DEFAULT_LATIN_MONO_FONT_PATH := "res://addons/jediterm/render/fonts/jet_brains_mono_regular.ttf"
 
+const _BYTE_ESC := 0x1B
+const _BYTE_LBRACKET := 0x5B # '['
+const _BYTE_CSI_A := 0x41 # 'A'
+const _BYTE_CSI_B := 0x42 # 'B'
+const _BYTE_CSI_C := 0x43 # 'C'
+const _BYTE_CSI_D := 0x44 # 'D'
+
 class LoopbackTtyConnector extends RefCounted:
 	var _on_write: Callable
 
@@ -156,19 +163,19 @@ func _consume_byte(b: int) -> void:
 	b &= 0xFF
 
 	if _esc_state == 1:
-		if b == int("[".unicode_at(0)):
+		if b == _BYTE_LBRACKET:
 			_esc_state = 2
 			return
 		_esc_state = 0
 	elif _esc_state == 2:
 		match b:
-			int("A".unicode_at(0)):
+			_BYTE_CSI_A:
 				_terminal.cursor_up(1)
-			int("B".unicode_at(0)):
+			_BYTE_CSI_B:
 				_terminal.cursor_down(1)
-			int("C".unicode_at(0)):
+			_BYTE_CSI_C:
 				_terminal.cursor_forward(1)
-			int("D".unicode_at(0)):
+			_BYTE_CSI_D:
 				_terminal.cursor_backward(1)
 			_:
 				pass
@@ -176,7 +183,7 @@ func _consume_byte(b: int) -> void:
 		return
 
 	match b:
-		int(Ascii.ESC_CHAR):
+		_BYTE_ESC:
 			_esc_state = 1
 			return
 		0x0D:
@@ -225,6 +232,15 @@ func _on_enter() -> void:
 	_input_line = ""
 	_prompt()
 
+func _on_backspace() -> void:
+	if _input_line == "":
+		return
+	_input_line = _input_line.substr(0, _input_line.length() - 1)
+	# Typical TTY behavior: move left, erase, move left.
+	_terminal.backspace(1)
+	_terminal.writeString(" ")
+	_terminal.backspace(1)
+
 static func _bytes_hex(bytes: PackedByteArray) -> String:
 	if bytes.is_empty():
 		return ""
@@ -239,4 +255,3 @@ static func _sanitize_one_line(s: String) -> String:
 	if t.length() > 40:
 		return t.substr(0, 40) + "…"
 	return t
-
