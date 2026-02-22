@@ -28,8 +28,12 @@ func _ready() -> void:
 		terminal_control.set_text_buffer(buf)
 
 	terminal_control.position = Vector2(16, 40)
-	terminal_control.cell_width = 10
-	terminal_control.cell_height = 18
+
+	# Use a monospaced font for proper grid alignment (Latin). CJK shaping/width still depends on fallback fonts.
+	var mono_font: Font = load("res://addons/jediterm/render/fonts/jet_brains_mono_regular.ttf") if ResourceLoader.exists("res://addons/jediterm/render/fonts/jet_brains_mono_regular.ttf") else null
+	if mono_font != null and terminal_control.has_method("set_terminal_font"):
+		terminal_control.set_terminal_font(mono_font, 16)
+
 	terminal_control.custom_minimum_size = Vector2(cols * terminal_control.cell_width, rows * terminal_control.cell_height)
 	terminal_control.size = terminal_control.custom_minimum_size
 	terminal_control.focus_mode = Control.FOCUS_ALL

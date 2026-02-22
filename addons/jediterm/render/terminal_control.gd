@@ -9,6 +9,10 @@ const KeyEventVK := preload("res://addons/jediterm/core/key_event.gd")
 
 @export var cell_width: int = 10
 @export var cell_height: int = 20
+@export var auto_cell_metrics: bool = true
+
+@export var terminal_font: Font = null
+@export var terminal_font_size: int = 0
 
 @export var default_fg: Color = Color.WHITE
 @export var default_bg: Color = Color.BLACK
@@ -21,6 +25,14 @@ var _text_buffer: RefCounted = null
 var _scroll_origin: int = 0
 var _terminal: RefCounted = null
 var _terminal_output = null
+
+func _ready() -> void:
+	if auto_cell_metrics:
+		_update_cell_metrics()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_THEME_CHANGED and auto_cell_metrics:
+		_update_cell_metrics()
 
 func set_text_buffer(text_buffer: RefCounted) -> void:
 	_text_buffer = text_buffer
@@ -41,6 +53,14 @@ func set_terminal(terminal: RefCounted) -> void:
 
 func set_terminal_output(terminal_output) -> void:
 	_terminal_output = terminal_output
+
+func set_terminal_font(font: Font, font_size: int = 0) -> void:
+	terminal_font = font
+	if font_size > 0:
+		terminal_font_size = int(font_size)
+	if auto_cell_metrics:
+		_update_cell_metrics()
+	queue_redraw()
 
 func build_draw_plan() -> RefCounted:
 	var snap := RenderSnapshot.new(_text_buffer, _scroll_origin)
@@ -105,8 +125,8 @@ func _draw() -> void:
 		draw_rect(Rect2(float(op.x), float(op.y), float(op.w), float(op.h)), Color(op.color), true)
 
 	# Rendering text is intentionally minimal in M1; font metrics will be refined later.
-	var font := get_theme_default_font()
-	var font_size := get_theme_default_font_size()
+	var font := _get_draw_font()
+	var font_size := _get_draw_font_size()
 	var ascent := float(font.get_ascent(font_size)) if font != null else float(cell_height) * 0.8
 	for op in ops:
 		if String(op.get("type", "")) != "glyph":
@@ -167,3 +187,37 @@ func _map_godot_keycode_to_terminal_keycode(godot_keycode: int) -> int:
 			return int(Ascii.BS_CHAR)
 		_:
 			return -1
+
+func _get_draw_font() -> Font:
+	return terminal_font if terminal_font != null else get_theme_default_font()
+
+func _get_draw_font_size() -> int:
+	if int(terminal_font_size) > 0:
+		return int(terminal_font_size)
+	return int(get_theme_default_font_size())
+
+func _update_cell_metrics() -> void:
+	var font := _get_draw_font()
+	var font_size := _get_draw_font_size()
+	if font == null:
+		return
+
+	var mono_w := _measure_text_width(font, font_size, "W")
+	var mono_i := _measure_text_width(font, font_size, "i")
+	if absf(mono_w - mono_i) > 0.1:
+		push_warning("TerminalControl: current font looks proportional; set a monospaced font for correct grid alignment.")
+
+	cell_width = maxi(1, int(ceilf(mono_w)))
+	var h := 0.0
+	if font.has_method("get_height"):
+		h = float(font.get_height(font_size))
+	cell_height = maxi(1, int(ceilf(h if h > 0.0 else float(cell_height))))
+
+func _measure_text_width(font: Font, font_size: int, s: String) -> float:
+	if font == null or s == "":
+		return 0.0
+	if font.has_method("get_string_size"):
+		var v: Vector2 = font.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, int(font_size))
+		return float(v.x)
+	# Fallback: assume current cell width.
+	return float(cell_width)
