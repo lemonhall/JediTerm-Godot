@@ -370,13 +370,40 @@ func _get_draw_font_size() -> int:
 func _get_cursor_cell() -> Vector2i:
 	if _terminal == null:
 		return Vector2i(-1, -1)
+	var raw := Vector2i(-1, -1)
 	if _terminal.has_method("get_cursor_position"):
-		return Vector2i(_terminal.get_cursor_position())
+		raw = Vector2i(_terminal.get_cursor_position())
+		return _normalize_cursor_cell(raw)
 	if _terminal.has_method("getCursorPosition"):
-		return Vector2i(_terminal.getCursorPosition())
+		raw = Vector2i(_terminal.getCursorPosition())
+		return _normalize_cursor_cell(raw)
 	if _terminal.has_method("getCursorX") and _terminal.has_method("getCursorY"):
-		return Vector2i(int(_terminal.getCursorX()), int(_terminal.getCursorY()))
+		raw = Vector2i(int(_terminal.getCursorX()), int(_terminal.getCursorY()))
+		return _normalize_cursor_cell(raw)
 	return Vector2i(-1, -1)
+
+func _normalize_cursor_cell(raw: Vector2i) -> Vector2i:
+	if _text_buffer == null:
+		return raw
+	if not (_text_buffer.has_method("get_width") and _text_buffer.has_method("get_height")):
+		return raw
+	var w := int(_text_buffer.get_width())
+	var h := int(_text_buffer.get_height())
+	if w <= 0 or h <= 0:
+		return raw
+
+	# JediTerminal exposes cursor positions as 1-based (and can return w+1 when wrap_pending).
+	# Renderer operates on 0-based visible cells.
+	var x := int(raw.x)
+	var y := int(raw.y)
+	var looks_one_based := (x >= 1 and x <= w + 1 and y >= 1 and y <= h + 1)
+	if looks_one_based:
+		x -= 1
+		y -= 1
+
+	x = clampi(x, 0, w - 1)
+	y = clampi(y, 0, h - 1)
+	return Vector2i(x, y)
 
 func _is_cursor_visible() -> bool:
 	if not bool(show_cursor):
