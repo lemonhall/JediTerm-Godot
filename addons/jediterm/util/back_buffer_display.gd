@@ -6,6 +6,9 @@ var _window_foreground := {"r": 0, "g": 0, "b": 0}
 var _window_background := {"r": 0, "g": 0, "b": 0}
 var _cursor_shape: int = 0
 var _selection: RefCounted = null
+var _bracketed_paste_mode: bool = false
+var _mouse_mode: int = 0
+var _mouse_format: int = 3 # MouseFormat.MOUSE_FORMAT_XTERM
 
 var selection: RefCounted:
 	get:
@@ -44,6 +47,33 @@ func set_cursor_shape(shape: int) -> void:
 
 func get_cursor_shape() -> int:
 	return _cursor_shape
+
+func setBracketedPasteMode(enabled: bool) -> void:
+	_bracketed_paste_mode = bool(enabled)
+
+func set_bracketed_paste_mode(enabled: bool) -> void:
+	setBracketedPasteMode(enabled)
+
+func get_bracketed_paste_mode() -> bool:
+	return _bracketed_paste_mode
+
+func terminalMouseModeSet(mouse_mode: int) -> void:
+	_mouse_mode = int(mouse_mode)
+
+func terminal_mouse_mode_set(mouse_mode: int) -> void:
+	terminalMouseModeSet(mouse_mode)
+
+func get_mouse_mode() -> int:
+	return _mouse_mode
+
+func setMouseFormat(mouse_format: int) -> void:
+	_mouse_format = int(mouse_format)
+
+func set_mouse_format(mouse_format: int) -> void:
+	setMouseFormat(mouse_format)
+
+func get_mouse_format() -> int:
+	return _mouse_format
 
 func _track_selection(sel: RefCounted) -> void:
 	if sel == null:

@@ -60,6 +60,14 @@ func write(data) -> void:
 func isConnected() -> bool:
 	if _process == null:
 		return false
+	if typeof(_process) == TYPE_DICTIONARY:
+		var d: Dictionary = _process
+		if d.has("is_alive"):
+			var v = d.get("is_alive")
+			if v is Callable:
+				return bool(v.call())
+			return bool(v)
+		return true
 	if _process.has_method("isAlive"):
 		return bool(_process.isAlive())
 	if _process.has_method("is_alive"):
@@ -68,14 +76,28 @@ func isConnected() -> bool:
 
 func close() -> void:
 	if _process != null:
+		if typeof(_process) == TYPE_DICTIONARY:
+			_process = null
+			_input = null
+			_output = null
+			return
 		if _process.has_method("destroy"):
 			_process.destroy()
 		elif _process.has_method("kill"):
 			_process.kill()
 	_process = null
+	_input = null
+	_output = null
 
 func waitFor() -> int:
 	if _process == null:
+		return 0
+	if typeof(_process) == TYPE_DICTIONARY:
+		var d: Dictionary = _process
+		if d.has("wait_for"):
+			var wf = d.get("wait_for")
+			if wf is Callable:
+				return int(wf.call())
 		return 0
 	if _process.has_method("waitFor"):
 		return int(_process.waitFor())
@@ -83,10 +105,13 @@ func waitFor() -> int:
 		return int(_process.wait_for())
 	return 0
 
+func resize(_term_size) -> void:
+	# Upstream supports resize; this port keeps it as a no-op for in-memory stubs.
+	pass
+
 func ready() -> bool:
 	if _input == null:
 		return true
 	if _input.has_method("ready"):
 		return bool(_input.ready())
 	return true
-

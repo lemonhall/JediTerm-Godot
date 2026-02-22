@@ -452,6 +452,8 @@ func setAnsiConformanceLevel(level: int) -> void:
 
 func setBracketedPasteMode(enabled: bool) -> void:
 	_bracketed_paste_mode = bool(enabled)
+	if _display != null and _display.has_method("setBracketedPasteMode"):
+		_display.setBracketedPasteMode(_bracketed_paste_mode)
 
 func setCursorVisible(visible: bool) -> void:
 	_cursor_visible = bool(visible)
@@ -460,9 +462,16 @@ func setCursorVisible(visible: bool) -> void:
 
 func setMouseMode(mode: int) -> void:
 	_mouse_mode = int(mode)
+	if _display != null and _display.has_method("terminalMouseModeSet"):
+		_display.terminalMouseModeSet(_mouse_mode)
 
 func setMouseFormat(format: int) -> void:
 	_mouse_format = int(format)
+	if _display != null and _display.has_method("setMouseFormat"):
+		_display.setMouseFormat(_mouse_format)
+
+func is_application_keypad_enabled() -> bool:
+	return bool(_application_keypad)
 
 func mouseMoved(_x: int, _y: int, _event) -> void: pass
 func mouseDragged(_x: int, _y: int, _event) -> void: pass

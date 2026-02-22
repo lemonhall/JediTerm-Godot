@@ -16,6 +16,8 @@ const TerminalColor := preload("res://addons/jediterm/terminal/terminal_color.gd
 const TextStyle := preload("res://addons/jediterm/terminal/text_style.gd")
 const TermSize := preload("res://addons/jediterm/core/util/term_size.gd")
 const TerminalMode := preload("res://addons/jediterm/terminal/terminal_mode.gd")
+const MouseMode := preload("res://addons/jediterm/terminal/emulator/mouse/mouse_mode.gd")
+const MouseFormat := preload("res://addons/jediterm/terminal/emulator/mouse/mouse_format.gd")
 
 var _g0_charset: String = "B"
 var _g1_charset: String = "B"
@@ -166,6 +168,8 @@ func _process_esc(terminal: RefCounted, text: String, esc_index: int) -> int:
 				terminal.set_horizontal_tab_stop()
 			return esc_index + 2
 		0x3E, 0x3D: # '>' or '=' keypad mode
+			if terminal != null and terminal.has_method("setApplicationKeypad"):
+				terminal.setApplicationKeypad(next_cp == 0x3D)
 			return esc_index + 2
 		_:
 			return esc_index + 2
@@ -344,6 +348,29 @@ func _handle_csi(terminal: RefCounted, param_bytes: String, intermediate: String
 				47, 1047, 1049:
 					if terminal.has_method("use_alternate_buffer"):
 						terminal.use_alternate_buffer(enabled)
+				1:
+					# DECCKM: application cursor keys
+					if terminal.has_method("setApplicationArrowKeys"):
+						terminal.setApplicationArrowKeys(enabled)
+				2004:
+					# Bracketed Paste Mode
+					if terminal.has_method("setBracketedPasteMode"):
+						terminal.setBracketedPasteMode(enabled)
+				1000:
+					if terminal.has_method("setMouseMode"):
+						terminal.setMouseMode(MouseMode.MOUSE_REPORTING_NORMAL if enabled else MouseMode.MOUSE_REPORTING_NONE)
+				1002:
+					if terminal.has_method("setMouseMode"):
+						terminal.setMouseMode(MouseMode.MOUSE_REPORTING_BUTTON_MOTION if enabled else MouseMode.MOUSE_REPORTING_NONE)
+				1003:
+					if terminal.has_method("setMouseMode"):
+						terminal.setMouseMode(MouseMode.MOUSE_REPORTING_ALL_MOTION if enabled else MouseMode.MOUSE_REPORTING_NONE)
+				1004:
+					if terminal.has_method("setMouseMode"):
+						terminal.setMouseMode(MouseMode.MOUSE_REPORTING_FOCUS if enabled else MouseMode.MOUSE_REPORTING_NONE)
+				1006:
+					if terminal.has_method("setMouseFormat"):
+						terminal.setMouseFormat(MouseFormat.MOUSE_FORMAT_SGR if enabled else MouseFormat.MOUSE_FORMAT_XTERM)
 				_:
 					pass
 		return
