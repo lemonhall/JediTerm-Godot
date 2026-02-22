@@ -1,6 +1,7 @@
 # Local reference repos (cloned for reading only)
 refs/*
 !refs/README.md
+!refs/.gdignore
 
 # Godot local data
 .godot/
