@@ -10,7 +10,7 @@ func _init() -> void:
 	var TerminalTextBufferScript := load("res://addons/jediterm/terminal/model/terminal_text_buffer.gd")
 	var JediTerminalScript := load("res://addons/jediterm/terminal/model/jedi_terminal.gd")
 	var BackBufferDisplayScript := load("res://addons/jediterm/util/back_buffer_display.gd")
-	var TestSessionScript := load("res://tests/_jediterm/test_session.gd")
+	var TestSessionScript := load("res://tests/_jediterm/_test_session.gd")
 
 	if StyleStateScript == null or TerminalTextBufferScript == null or JediTerminalScript == null or BackBufferDisplayScript == null or TestSessionScript == null:
 		T.fail_and_quit(self, "Missing ScrollingTest scripts")
@@ -153,4 +153,3 @@ func _test_scrolling_origin(StyleStateScript, TerminalTextBufferScript, JediTerm
 	consumer = ArrayBasedTextConsumer.new(buf.get_height(), buf.get_width())
 	buf.process_history_and_screen_lines(-2, buf.get_height(), consumer)
 	return T.require_eq(self, consumer.get_lines(), "1 \n2 \n3 \n")
-

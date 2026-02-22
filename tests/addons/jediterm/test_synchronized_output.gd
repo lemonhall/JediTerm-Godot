@@ -1,7 +1,7 @@
 extends SceneTree
 
 const T := preload("res://tests/_test_util.gd")
-const TestSession := preload("res://tests/_jediterm/test_session.gd")
+const TestSession := preload("res://tests/_jediterm/_test_session.gd")
 
 const BEGIN_SYNC_OUTPUT := "\u001b[?2026h"
 const END_SYNC_OUTPUT := "\u001b[?2026l"
@@ -85,4 +85,3 @@ func _test_no_end_sequence_before_finish() -> bool:
 	var session = TestSession.new(20, 5)
 	session.process("Foo" + BEGIN_SYNC_OUTPUT + "Bar")
 	return _assert_screen_lines(session, ["FooBar"])
-

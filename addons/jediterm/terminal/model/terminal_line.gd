@@ -1,6 +1,7 @@
 extends RefCounted
 
 const CharBuffer := preload("res://addons/jediterm/terminal/model/char_buffer.gd")
+const TextStyle := preload("res://addons/jediterm/terminal/text_style.gd")
 
 class TextEntry:
 	var style
@@ -21,6 +22,44 @@ func _init(entry: TextEntry = null) -> void:
 		_add_entry(entry)
 
 var _entries: Array = []
+var is_wrapped: bool = false
+
+func get_style_runs() -> Array:
+	# Returns [{"style": Dictionary, "text": String}, ...] for the full line text (up to the first NUL entry).
+	var runs: Array = []
+	for e in _entries:
+		var entry: TextEntry = e
+		if entry.is_nul():
+			break
+		var s = entry.style
+		if s == null:
+			s = TextStyle.EMPTY
+		runs.append({"style": Dictionary(s), "text": entry.text.as_string()})
+	return runs
+
+func apply_style_range(x_from: int, x_to_exclusive: int, style: Dictionary) -> void:
+	if x_to_exclusive <= x_from:
+		return
+	if x_from < 0:
+		x_from = 0
+	if x_to_exclusive < 0:
+		return
+
+	var cells := _to_cells()
+	var cps: PackedInt32Array = cells.codepoints
+	var styles: Array = cells.styles
+	if x_to_exclusive > cps.size():
+		var old_size := cps.size()
+		cps.resize(x_to_exclusive)
+		for i in range(old_size, x_to_exclusive):
+			cps[i] = CharBuffer.SPACE_CODEPOINT
+			styles.append(TextStyle.EMPTY)
+
+	for i in range(x_from, x_to_exclusive):
+		if i >= 0 and i < styles.size():
+			styles[i] = style.duplicate(true)
+
+	_entries = _from_cells(cps, styles)
 
 func get_text() -> String:
 	var out := ""
@@ -92,3 +131,47 @@ func _add_entry(entry: TextEntry) -> void:
 			if ex.is_nul():
 				ex.text.un_nullify()
 	_entries.append(entry)
+
+func _to_cells() -> Dictionary:
+	var cps := PackedInt32Array()
+	var styles: Array = []
+	var total := length()
+	cps.resize(total)
+	styles.resize(total)
+
+	var pos := 0
+	for e in _entries:
+		var entry: TextEntry = e
+		var s = entry.style
+		if s == null:
+			s = TextStyle.EMPTY
+		for i in entry.text.length():
+			if pos >= total:
+				break
+			cps[pos] = entry.text.char_at(i)
+			styles[pos] = Dictionary(s)
+			pos += 1
+
+	return {"codepoints": cps, "styles": styles}
+
+func _from_cells(cps: PackedInt32Array, styles: Array) -> Array:
+	var out: Array = []
+	if cps.is_empty():
+		return out
+
+	var run_style = styles[0] if styles.size() > 0 else TextStyle.EMPTY
+	var run_buf := PackedInt32Array()
+	run_buf.append(int(cps[0]))
+
+	for i in range(1, cps.size()):
+		var s = styles[i] if i < styles.size() else TextStyle.EMPTY
+		if s == run_style:
+			run_buf.append(int(cps[i]))
+			continue
+		out.append(TextEntry.new(run_style, CharBuffer.new(run_buf)))
+		run_style = s
+		run_buf = PackedInt32Array()
+		run_buf.append(int(cps[i]))
+
+	out.append(TextEntry.new(run_style, CharBuffer.new(run_buf)))
+	return out
