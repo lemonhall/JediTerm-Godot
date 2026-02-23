@@ -39,6 +39,9 @@ const DEFAULT_LATIN_MONO_FONT_PATH := "res://addons/jediterm/render/fonts/jet_br
 
 @export var debug_draw_timing: bool = false
 
+@export var grid_columns: int = 80
+@export var grid_rows: int = 24
+
 var _cursor_blink_visible: bool = true
 var _cursor_blink_timer: float = 0.0
 
@@ -63,6 +66,7 @@ func _init() -> void:
 func _ready() -> void:
 	if auto_cell_metrics:
 		_update_cell_metrics()
+	_update_minimum_size_from_grid()
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_THEME_CHANGED and auto_cell_metrics:
@@ -577,6 +581,7 @@ func _update_cell_metrics() -> void:
 	if scale <= 0.01:
 		scale = 1.0
 	cell_height = maxi(1, int(ceilf(h * scale)))
+	_update_minimum_size_from_grid()
 
 func _measure_text_width(font: Font, font_size: int, s: String) -> float:
 	if font == null or s == "":
@@ -592,3 +597,10 @@ func consume_and_redraw() -> void:
 		var dirty: PackedInt32Array = _text_buffer.consume_dirty_rows()
 		if dirty.size() > 0:
 			_request_redraw()
+
+func _update_minimum_size_from_grid() -> void:
+	if grid_columns > 0 and grid_rows > 0 and cell_width > 0 and cell_height > 0:
+		custom_minimum_size = Vector2(
+			float(grid_columns * cell_width),
+			float(grid_rows * cell_height)
+		)

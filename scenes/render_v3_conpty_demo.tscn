@@ -36,3 +36,5 @@ offset_bottom = 712.0
 focus_mode = 2
 script = ExtResource("2")
 terminal_font_size = 24
+grid_columns = 130
+grid_rows = 25

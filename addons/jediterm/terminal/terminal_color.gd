@@ -67,21 +67,21 @@ static func _xterm_256_to_rgb(i: int) -> Dictionary:
 		# Standard xterm 16-color table (not exhaustively used by v1 tests).
 		var table := [
 			rgb(0, 0, 0),       # 0 black
-			rgb(128, 0, 0),     # 1 red
-			rgb(0, 128, 0),     # 2 green
-			rgb(128, 128, 0),   # 3 yellow
-			rgb(0, 0, 128),     # 4 blue
-			rgb(128, 0, 128),   # 5 magenta
-			rgb(0, 128, 128),   # 6 cyan
-			rgb(192, 192, 192), # 7 white (light gray)
-			rgb(128, 128, 128), # 8 bright black (dark gray)
-			rgb(255, 0, 0),     # 9 bright red
-			rgb(0, 255, 0),     # 10 bright green
-			rgb(255, 255, 0),   # 11 bright yellow
-			rgb(0, 0, 255),     # 12 bright blue
-			rgb(255, 0, 255),   # 13 bright magenta
-			rgb(0, 255, 255),   # 14 bright cyan
-			rgb(255, 255, 255), # 15 bright white
+			rgb(205, 49, 49),   # 1 red
+			rgb(13, 188, 121),  # 2 green
+			rgb(229, 229, 16),  # 3 yellow
+			rgb(36, 114, 200),  # 4 blue
+			rgb(188, 63, 188),  # 5 magenta
+			rgb(17, 168, 205),  # 6 cyan
+			rgb(229, 229, 229), # 7 white
+			rgb(102, 102, 102), # 8 bright black
+			rgb(241, 76, 76),   # 9 bright red
+			rgb(35, 209, 139),  # 10 bright green
+			rgb(245, 245, 67),  # 11 bright yellow
+			rgb(59, 142, 234),  # 12 bright blue
+			rgb(214, 112, 214), # 13 bright magenta
+			rgb(41, 184, 219),  # 14 bright cyan
+			rgb(229, 229, 229), # 15 bright white
 		]
 		return table[i]
 
