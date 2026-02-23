@@ -20,6 +20,7 @@ public:
 
 	// PRD API
 	Error create(const String &kernel_path, const String &rootfs_path, int ram_size_mb = 128);
+	Error create_from_images(const String &bios_path, const String &kernel_path, const String &initrd_path, int ram_size_mb = 128);
 	void destroy();
 	bool is_running() const;
 
@@ -33,6 +34,7 @@ public:
 
 	// ConPTY-like convenience aliases (for TerminalControl integration)
 	int open(int cols, int rows, const String &kernel_path, const String &rootfs_path, int ram_size_mb = 128);
+	int open_from_images(int cols, int rows, const String &bios_path, const String &kernel_path, const String &initrd_path, int ram_size_mb = 128);
 	int write(const PackedByteArray &data);
 	int resize(int cols, int rows);
 	void close();
@@ -42,6 +44,9 @@ protected:
 	static void _bind_methods();
 
 private:
+	static void _console_write_cb(void *opaque, const uint8_t *buf, int len);
+	static int _console_read_cb(void *opaque, uint8_t *buf, int len);
+
 	void _start_worker();
 	void _stop_worker();
 	void _worker_main();
@@ -57,10 +62,11 @@ private:
 
 	String _kernel_path;
 	String _rootfs_path;
+	String _bios_path;
+	String _initrd_path;
 
 	jediterm_tinyemu::SpscRingBuffer _in{1 << 16}; // 64KiB
 	jediterm_tinyemu::SpscRingBuffer _out{1 << 20}; // 1MiB
 };
 
 } // namespace godot
-
