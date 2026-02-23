@@ -1,0 +1,24 @@
+#!/usr/bin/env python
+
+import os
+
+# Reuse the repo-level godot-cpp checkout under addons/jediterm/native/thirdparty/godot-cpp/
+env = SConscript("../thirdparty/godot-cpp/SConstruct")
+env["ENV"] = os.environ
+
+VariantDir("build", "src", duplicate=0)
+env["OBJPREFIX"] = os.path.join("build", "")
+
+sources = Glob("src/*.cpp")
+
+if env["platform"] == "windows":
+	# Keep consistent with godot-cpp CRT choice (/MD).
+	env.Append(LIBS=["User32", "Advapi32", "Ole32", "Shell32"])
+
+library = env.SharedLibrary(
+	"../../bin/win64/tinyemu{}{}".format(env["suffix"], env["SHLIBSUFFIX"]),
+	source=sources,
+)
+
+Default(library)
+

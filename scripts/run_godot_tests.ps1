@@ -3,7 +3,10 @@ Param(
   [string]$Suite = "all",
   [string]$One = "",
   [int]$TimeoutSec = $(if ($env:GODOT_TEST_TIMEOUT_SEC) { [int]$env:GODOT_TEST_TIMEOUT_SEC } else { 120 }),
-  [string[]]$ExtraArgs = @()
+  [string[]]$ExtraArgs = @(),
+  # By default, headless tests should be deterministic and not depend on local editor state under .godot/.
+  # If you want to run native extension integration tests (e.g. ConPTY), enable this explicitly.
+  [switch]$EnableGdExtensions
 )
 
 $ErrorActionPreference = "Stop"
@@ -143,33 +146,52 @@ if (![string]::IsNullOrWhiteSpace($One)) {
 }
 
 $status = 0
-foreach ($t in $tests) {
-  $scriptPath = $t
-  if (!(Test-Path $scriptPath)) { $scriptPath = Join-Path $RootDir $t }
-  if (!(Test-Path $scriptPath)) {
-    Write-Host "Missing test script: $t"
-    $status = 1
-    continue
+$disabledExtensionListPath = ""
+try {
+  $extListPath = Join-Path $RootDir ".godot\\extension_list.cfg"
+  if (-not $EnableGdExtensions -and (Test-Path $extListPath)) {
+    $disabledExtensionListPath = Join-Path $RootDir (".godot\\extension_list.cfg.disabled_tests_{0}" -f ([guid]::NewGuid().ToString("N")))
+    Move-Item -Force -Path $extListPath -Destination $disabledExtensionListPath
+    Write-Host ("[INFO] Disabled local GDExtensions list for tests: {0}" -f $extListPath)
   }
 
-  Write-Host "--- RUN $t"
-  $args = @()
-  if ($ExtraArgs.Count -gt 0) { $args += $ExtraArgs }
-  $args += @("--headless", "--rendering-driver", "dummy", "--path", $RootDir.Path, "--script", $scriptPath)
+  foreach ($t in $tests) {
+    $scriptPath = $t
+    if (!(Test-Path $scriptPath)) { $scriptPath = Join-Path $RootDir $t }
+    if (!(Test-Path $scriptPath)) {
+      Write-Host "Missing test script: $t"
+      $status = 1
+      continue
+    }
 
-  $res = Run-ProcessCapture -FilePath $GodotExe -Args $args -WorkingDirectory $RootDir.Path -TimeoutSec $TimeoutSec -Env $Env
-  if ($res.timed_out) {
+    Write-Host "--- RUN $t"
+    $args = @()
+    if ($ExtraArgs.Count -gt 0) { $args += $ExtraArgs }
+    $args += @("--headless", "--rendering-driver", "dummy", "--path", $RootDir.Path, "--script", $scriptPath)
+
+    $res = Run-ProcessCapture -FilePath $GodotExe -Args $args -WorkingDirectory $RootDir.Path -TimeoutSec $TimeoutSec -Env $Env
+    if ($res.timed_out) {
+      if (-not [string]::IsNullOrWhiteSpace($res.stdout)) { $res.stdout | Write-Host }
+      if (-not [string]::IsNullOrWhiteSpace($res.stderr)) { $res.stderr | Write-Host }
+      Write-Host ("TIMEOUT after {0}s: {1}" -f $TimeoutSec, $t)
+      $status = 1
+      continue
+    }
+
     if (-not [string]::IsNullOrWhiteSpace($res.stdout)) { $res.stdout | Write-Host }
     if (-not [string]::IsNullOrWhiteSpace($res.stderr)) { $res.stderr | Write-Host }
-    Write-Host ("TIMEOUT after {0}s: {1}" -f $TimeoutSec, $t)
-    $status = 1
-    continue
+
+    if ($res.exit_code -ne 0) { $status = 1 }
   }
-
-  if (-not [string]::IsNullOrWhiteSpace($res.stdout)) { $res.stdout | Write-Host }
-  if (-not [string]::IsNullOrWhiteSpace($res.stderr)) { $res.stderr | Write-Host }
-
-  if ($res.exit_code -ne 0) { $status = 1 }
+} finally {
+  if ($disabledExtensionListPath -and (Test-Path $disabledExtensionListPath)) {
+    $extListPath = Join-Path $RootDir ".godot\\extension_list.cfg"
+    if (Test-Path $extListPath) {
+      Remove-Item -Force -Path $disabledExtensionListPath
+    } else {
+      Move-Item -Force -Path $disabledExtensionListPath -Destination $extListPath
+    }
+  }
 }
 
 exit $status
