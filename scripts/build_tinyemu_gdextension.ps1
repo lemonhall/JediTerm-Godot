@@ -47,10 +47,10 @@ $apiDir = Join-Path $nativeRoot "build\\godot_api"
 $apiFile = Join-Path $apiDir "extension_api.json"
 
 $needApiDump = (-not (Test-Path $apiFile)) -or $RegenBindings
-$generatedHeader = Join-Path $nativeRoot "thirdparty\\godot-cpp\\gen\\include\\godot_cpp\\classes\\object.hpp"
-$needBindings = (-not (Test-Path $generatedHeader)) -or $RegenBindings
 
-if ($needApiDump -or $needBindings) {
+Write-Host ("[INFO] extension_api.json: {0} (exists={1})" -f $apiFile, (Test-Path $apiFile))
+
+if ($needApiDump) {
   New-Item -ItemType Directory -Force -Path $apiDir | Out-Null
   $godot = Get-GodotConsoleExe
   Push-Location $apiDir
@@ -66,6 +66,10 @@ if ($needApiDump -or $needBindings) {
 }
 
 if (-not (Test-Path $apiFile)) { throw "Expected extension_api.json not found: $apiFile" }
+
+$generatedHeader = Join-Path $nativeRoot "thirdparty\\godot-cpp\\gen\\include\\godot_cpp\\classes\\object.hpp"
+$needBindings = (-not (Test-Path $generatedHeader)) -or $RegenBindings
+Write-Host ("[INFO] godot-cpp bindings: {0} (exists={1})" -f $generatedHeader, (Test-Path $generatedHeader))
 
 $buildDebug = $true
 $buildRelease = $false
@@ -101,4 +105,3 @@ try {
 }
 
 Write-Host ("[OK] Build finished in {0:n1}s" -f $sw.Elapsed.TotalSeconds)
-

@@ -13,6 +13,9 @@ addons/jediterm/native/bin/
 addons/jediterm/native/build/
 addons/jediterm/bin/
 
+# SCons signature databases (must not be committed)
+.sconsign.dblite
+
 # Python caches
 __pycache__/
 *.pyc
