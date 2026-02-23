@@ -4,13 +4,55 @@
 
 Terminal emulator for Godot 4.6, implemented in pure GDScript. The emulation core is ported from JediTerm (Java). Windows PTY integration is provided via an optional ConPTY GDExtension.
 
+## Screenshots
+
+![Web demo](screenshot1.png)
+
+![Web demo (IME input)](screenshot2.png)
+
+## Current Status
+
+- Web build is working end-to-end (Web export + WS SSH bridge) and can connect to a remote machine.
+- IME works in the browser via an HTML/JS IME patch (for Godot Web canvas input limitations).
+- FPS overlay is available in the demo UI; local tests show 50+ FPS, and a 24h stress run (checked via `top`) is stable.
+
+## Web Demo (WS SSH bridge)
+
+1) Start the Python WS SSH bridge:
+
+```powershell
+cd ssh-bridge
+uv run python -m uvicorn bridge.app:app --host 127.0.0.1 --port 8765 --log-level info
+```
+
+2) Serve the exported Web build locally and open it:
+
+```powershell
+cd ..
+python server.py 8080
+```
+
+Then open: `http://localhost:8080/web/JediTerm-Godot.html`
+
+3) In the demo scene UI, fill in SSH target and connect.
+
+## Export Web (with IME patch)
+
+The Web export is tracked under `web/` and can be rebuilt with a single command:
+
+```powershell
+pwsh -NoProfile -File scripts\export_web_with_ime.ps1
+```
+
 ## Repo Layout
 
 - Core implementation: `addons/jediterm/`
 - Windows ConPTY (GDExtension): `addons/jediterm/native/` + `addons/jediterm/native/conpty.gdextension`
+- WS SSH bridge (Python): `ssh-bridge/`
 - Test runner (Windows/PowerShell): `scripts/run_godot_tests.ps1`
 - Headless tests: `tests/**/test_*.gd`
 - Demo scenes: `scenes/` (e.g. `scenes/render_v3_conpty_demo.tscn`)
+- Web export output: `web/`
 - Design/PRD/Plans: `init.md`, `docs/prd/`, `docs/plan/`
 - Agent rules: `AGENTS.md`
 
@@ -43,4 +85,3 @@ pwsh -NoProfile -File scripts\build_conpty_gdextension.ps1
 
 - Reference repos live under `refs/` and are for read-only comparison.
 - Godot `.uid` files should not be hand-edited.
-
