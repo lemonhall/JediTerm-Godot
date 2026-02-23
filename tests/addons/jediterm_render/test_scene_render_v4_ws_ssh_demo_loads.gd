@@ -23,7 +23,9 @@ func _init() -> void:
 	if not T.require_true(self, inst.has_node("Root/VBox/TopPanel/Top/Buttons/ToggleForm"), "ToggleForm button exists"):
 		inst.free()
 		return
+	if not T.require_true(self, inst.has_node("Root/VBox/TopPanel/Top/Buttons/Fps"), "Fps label exists"):
+		inst.free()
+		return
 
 	inst.free()
 	T.pass_and_quit(self)
-

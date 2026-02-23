@@ -20,6 +20,7 @@ const WebSocketTransport := preload("res://addons/jediterm/transport/websocket_t
 @onready var connect_btn: Button = $Root/VBox/TopPanel/Top/Buttons/Connect
 @onready var disconnect_btn: Button = $Root/VBox/TopPanel/Top/Buttons/Disconnect
 @onready var toggle_form_btn: Button = $Root/VBox/TopPanel/Top/Buttons/ToggleForm
+@onready var fps_label: Label = $Root/VBox/TopPanel/Top/Buttons/Fps
 @onready var form_grid: Control = $Root/VBox/TopPanel/Top/Grid
 
 var _terminal: RefCounted = null
@@ -27,6 +28,8 @@ var _buf: RefCounted = null
 var _transport: RefCounted = null
 var _ime_callback: Variant = null
 var _form_collapsed: bool = false
+var _fps_accum: float = 0.0
+var _fps_update_interval_sec: float = 0.25
 
 func _ready() -> void:
 	_setup_terminal()
@@ -47,6 +50,22 @@ func _exit_tree() -> void:
 func _process(_delta: float) -> void:
 	if _transport != null and _transport.has_method("poll"):
 		_transport.poll()
+	_update_fps(_delta)
+
+func _update_fps(delta: float) -> void:
+	if fps_label == null:
+		return
+	_fps_accum += float(delta)
+	if _fps_accum < float(_fps_update_interval_sec):
+		return
+	_fps_accum = 0.0
+
+	var fps := float(Engine.get_frames_per_second())
+	if fps <= 0.0:
+		fps_label.text = "FPS: --"
+		return
+	var ms := 1000.0 / fps
+	fps_label.text = "FPS: %d (%.1fms)" % [int(round(fps)), ms]
 
 func _setup_terminal() -> void:
 	var cols := int(terminal_control.get("grid_columns")) if terminal_control.has_method("get") else 120

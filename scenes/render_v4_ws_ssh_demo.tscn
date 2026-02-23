@@ -122,6 +122,14 @@ layout_mode = 2
 custom_minimum_size = Vector2(72, 0)
 text = "Hide"
 
+[node name="ButtonsSpacer" type="Control" parent="Root/VBox/TopPanel/Top/Buttons" unique_id=400600566]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Fps" type="Label" parent="Root/VBox/TopPanel/Top/Buttons" unique_id=2004350673]
+layout_mode = 2
+text = "FPS: --"
+
 [node name="Status" type="Label" parent="Root/VBox/TopPanel/Top" unique_id=2012134930]
 layout_mode = 2
 text = "Status: idle"
