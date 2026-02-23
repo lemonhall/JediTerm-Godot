@@ -1,22 +1,25 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://3b8eobdt645w"]
 
-[ext_resource type="Script" path="res://scenes/render_v2_m2_demo.gd" id="1"]
-[ext_resource type="Script" path="res://addons/jediterm/render/terminal_control.gd" id="2"]
+[ext_resource type="Script" uid="uid://br7a3j6k5d4pw" path="res://scenes/render_v2_m2_demo.gd" id="1"]
+[ext_resource type="Script" uid="uid://ryfpvlowy2jg" path="res://addons/jediterm/render/terminal_control.gd" id="2"]
 
-[node name="RenderV2M2Demo" type="Control"]
+[node name="RenderV2M2Demo" type="Control" unique_id=724495905]
+layout_mode = 3
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource("1")
 
-[node name="Info" type="Label" parent="."]
+[node name="Info" type="Label" parent="." unique_id=1478643404]
+layout_mode = 0
 offset_left = 16.0
 offset_top = 10.0
 offset_right = 1600.0
 offset_bottom = 90.0
-autowrap_mode = 3
 text = "Render v2 M2 demo"
+autowrap_mode = 3
 
-[node name="TerminalControl" type="Control" parent="."]
-script = ExtResource("2")
+[node name="TerminalControl" type="Control" parent="." unique_id=1316882155]
+anchors_preset = 0
 focus_mode = 2
-
+script = ExtResource("2")

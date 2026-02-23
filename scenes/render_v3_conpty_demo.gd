@@ -28,13 +28,15 @@ func _ready() -> void:
 	_try_start_conpty()
 
 func _process(_delta: float) -> void:
-	# Poll PTY data every frame — no more call_deferred delay
 	if _pty != null and _pty.has_method("poll_data"):
 		var data: PackedByteArray = _pty.poll_data()
-		# poll_data() emits `data_received` for backward compatibility; to minimize latency,
-		# we process the returned bytes directly here.
 		if data.size() > 0 and _terminal != null and _terminal.has_method("processBytes"):
+			var t0 = Time.get_ticks_usec()
 			_terminal.processBytes(data)
+			var t1 = Time.get_ticks_usec()
+			print("processBytes: %.1f ms, bytes: %d" % [(t1 - t0) / 1000.0, data.size()])
+			# 不等 consume_dirty_rows，直接强制重绘
+			terminal_control.queue_redraw()
 
 	var fps := int(Engine.get_frames_per_second())
 	var has_pty := (_pty != null)
@@ -44,7 +46,14 @@ func _process(_delta: float) -> void:
 		_font_label,
 		int(_font_px),
 	]
+	
+	
+var _debug_key_time_usec: int = 0
 
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed:
+		_debug_key_time_usec = Time.get_ticks_usec()
+		
 func _exit_tree() -> void:
 	if _pty != null and _pty.has_method("close"):
 		_pty.close()

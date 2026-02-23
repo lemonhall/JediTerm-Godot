@@ -51,6 +51,7 @@ var _font_label: String = ""
 var _font_px: int = 0
 
 func _ready() -> void:
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	var cols := 80
 	var rows := 24
 
@@ -255,3 +256,10 @@ static func _sanitize_one_line(s: String) -> String:
 	if t.length() > 40:
 		return t.substr(0, 40) + "…"
 	return t
+
+var _debug_key_time_usec: int = 0
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed:
+		_debug_key_time_usec = Time.get_ticks_usec()
+		print("_input frame: %d" % Engine.get_process_frames())

@@ -34,6 +34,13 @@ const DEFAULT_LATIN_MONO_FONT_PATH := "res://addons/jediterm/render/fonts/jet_br
 @export var show_cursor: bool = true
 @export var auto_resize_terminal: bool = false
 
+@export var cursor_blink: bool = true
+@export var cursor_blink_interval: float = 0.5
+
+var _cursor_blink_visible: bool = true
+var _cursor_blink_timer: float = 0.0
+
+
 var _text_buffer: RefCounted = null
 var _scroll_origin: int = 0
 var _terminal: RefCounted = null
@@ -95,10 +102,17 @@ func set_terminal_font(font: Font, font_size: int = 0) -> void:
 		_update_cell_metrics()
 	_request_redraw()
 
-func _process(_delta: float) -> void:
-	if _text_buffer != null and bool(_text_buffer.has_method("consume_dirty_rows")):
-		var dirty: PackedInt32Array = PackedInt32Array(_text_buffer.consume_dirty_rows())
-		if int(dirty.size()) > 0:
+func _process(delta: float) -> void:
+	if cursor_blink and show_cursor and has_focus():
+		_cursor_blink_timer += delta
+		if _cursor_blink_timer >= cursor_blink_interval:
+			_cursor_blink_timer -= cursor_blink_interval
+			_cursor_blink_visible = not _cursor_blink_visible
+			_request_redraw()
+
+	if _text_buffer != null and _text_buffer.has_method("consume_dirty_rows"):
+		var dirty: PackedInt32Array = _text_buffer.consume_dirty_rows()
+		if dirty.size() > 0:
 			_request_redraw()
 	if has_focus():
 		_update_ime_position(false)
@@ -167,10 +181,17 @@ func _gui_input(event: InputEvent) -> void:
 	if not has_focus():
 		return
 	if event is InputEventKey:
+		_cursor_blink_visible = true
+		_cursor_blink_timer = 0.0
 		if handle_key_event(event):
+			# 强制同步：立即消费 dirty rows，让当帧 _draw 画新数据
+			if _text_buffer != null and _text_buffer.has_method("consume_dirty_rows"):
+				_text_buffer.consume_dirty_rows()
+			queue_redraw()
 			if _should_consume_keycode(int(event.keycode)):
 				_debug_last_consumed_keycode = int(event.keycode)
 				accept_event()
+				
 
 func copy_selection_text() -> String:
 	if _text_buffer == null or _selection == null:
@@ -258,22 +279,38 @@ func _event_pos_to_cell(pos: Vector2, buffer_width: int, buffer_height: int) -> 
 	return Vector2i(x, y)
 
 func _draw() -> void:
+	var t0 = Time.get_ticks_usec()
+	var cursor = _get_cursor_cell()
+	print("_draw cursor: %s frame: %d" % [str(cursor), Engine.get_process_frames()])
+	var owner = get_parent()
+	if owner and owner.get("_debug_key_time_usec") and owner._debug_key_time_usec > 0:
+		var now = Time.get_ticks_usec()
+		var elapsed_ms = (now - owner._debug_key_time_usec) / 1000.0
+		print("Key → Draw: %.1f ms" % elapsed_ms)
+		owner._debug_key_time_usec = 0
+
+	var t1 = Time.get_ticks_usec()
 	var plan = build_draw_plan()
+	var t2 = Time.get_ticks_usec()
+
 	if plan == null:
 		return
-	var ops_any = plan.get("ops")
-	if typeof(ops_any) != TYPE_ARRAY:
-		return
 
-	var ops: Array = ops_any
-	# IMPORTANT: draw all backgrounds first, then glyphs.
-	# Otherwise wide glyphs (e.g. CJK) can be partially overwritten by the next cell background.
-	for op in ops:
-		if String(op.get("type", "")) != "bg":
-			continue
-		draw_rect(Rect2(float(op.x), float(op.y), float(op.w), float(op.h)), Color(op.color), true)
+	var bg_data: PackedFloat32Array = plan.bg_ops
+	var glyph_data: PackedFloat32Array = plan.glyph_ops
+	var bg_count := bg_data.size() / 8
+	var glyph_count := glyph_data.size() / 7
 
-	# Rendering text is intentionally minimal in M1; font metrics will be refined later.
+	var t3 = Time.get_ticks_usec()
+	for i in bg_count:
+		var off := i * 8
+		draw_rect(
+			Rect2(bg_data[off], bg_data[off + 1], bg_data[off + 2], bg_data[off + 3]),
+			Color(bg_data[off + 4], bg_data[off + 5], bg_data[off + 6], bg_data[off + 7]),
+			true
+		)
+	var t4 = Time.get_ticks_usec()
+
 	var font := _get_draw_font()
 	var font_size := _get_draw_font_size()
 	var ascent := float(font.get_ascent(font_size)) if font != null and font.has_method("get_ascent") else float(cell_height) * 0.8
@@ -281,12 +318,27 @@ func _draw() -> void:
 	var content_h := maxf(0.0, ascent + descent)
 	var leading := maxf(0.0, float(cell_height) - content_h)
 	var baseline_offset := leading * 0.5 + ascent
-	for op in ops:
-		if String(op.get("type", "")) != "glyph":
-			continue
-		var cp := int(op.cp)
-		var s := String.chr(cp)
-		draw_string(font, Vector2(float(op.x), float(op.y) + baseline_offset), s, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(op.color))
+
+	for i in glyph_count:
+		var off := i * 7
+		var s := String.chr(int(glyph_data[off + 2]))
+		draw_string(
+			font,
+			Vector2(glyph_data[off], glyph_data[off + 1] + baseline_offset),
+			s,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
+			Color(glyph_data[off + 3], glyph_data[off + 4], glyph_data[off + 5], glyph_data[off + 6])
+		)
+	var t5 = Time.get_ticks_usec()
+
+	print("build_plan: %.2f ms | bg: %.2f ms | glyph: %.2f ms | total: %.2f ms | bg: %d | glyph: %d" % [
+		(t2 - t1) / 1000.0,
+		(t4 - t3) / 1000.0,
+		(t5 - t4) / 1000.0,
+		(t5 - t0) / 1000.0,
+		bg_count,
+		glyph_count
+	])
 
 func _send_bytes(bytes: PackedByteArray) -> bool:
 	if bytes.is_empty():
@@ -494,10 +546,13 @@ func _normalize_cursor_cell(raw: Vector2i) -> Vector2i:
 func _is_cursor_visible() -> bool:
 	if not bool(show_cursor):
 		return false
-	# When viewing history (scroll origin < 0), hide cursor highlight for now.
 	if int(_scroll_origin) != 0:
 		return false
-	return _terminal != null
+	if _terminal == null:
+		return false
+	if cursor_blink and not _cursor_blink_visible:
+		return false
+	return true
 
 func _update_cell_metrics() -> void:
 	var font := _get_draw_font()
@@ -535,3 +590,9 @@ func _measure_text_width(font: Font, font_size: int, s: String) -> float:
 		return float(v.x)
 	# Fallback: assume current cell width.
 	return float(cell_width)
+
+func consume_and_redraw() -> void:
+	if _text_buffer != null and _text_buffer.has_method("consume_dirty_rows"):
+		var dirty: PackedInt32Array = _text_buffer.consume_dirty_rows()
+		if dirty.size() > 0:
+			_request_redraw()

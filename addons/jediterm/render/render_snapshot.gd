@@ -60,6 +60,8 @@ func selection_y_for_visible_row(visible_y: int) -> int:
 func get_styled_char_at(x: int, selection_y: int) -> Array:
 	if _text_buffer == null:
 		return [32, TextStyle.EMPTY]
+	if _text_buffer.has_method("getStyledCharAtDirect"):
+		return Array(_text_buffer.getStyledCharAtDirect(int(x), int(selection_y)))
 	if _text_buffer.has_method("getStyledCharAt"):
 		return Array(_text_buffer.getStyledCharAt(int(x), int(selection_y)))
 	if _text_buffer.has_method("get_styled_char_at"):

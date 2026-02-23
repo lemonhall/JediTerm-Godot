@@ -1256,3 +1256,21 @@ func resize(new_columns: int, new_rows: int, cursor_x_1: int, cursor_y_1: int) -
 		"cursor_x": clampi(cursor_new_x + 1, 1, _width),
 		"cursor_y": clampi(cursor_new_y + 1, 1, _height),
 	}
+	
+	
+func getStyledCharAtDirect(x: int, y: int) -> Array:
+	if y >= 0:
+		if y < 0 or y >= _height or x < 0 or x >= _width:
+			return [SPACE, TextStyle.EMPTY]
+		return [int(_get_screen()[y][x]), Dictionary(_get_styles()[y][x])]
+	# history line
+	var history_count := int(_history_lines.size())
+	var idx := history_count + y
+	if idx < 0 or idx >= history_count:
+		return [SPACE, TextStyle.EMPTY]
+	var line = _history_lines.get_line(idx)
+	if line == null:
+		return [SPACE, TextStyle.EMPTY]
+	var cp := int(line.charAt(x)) if line.has_method("charAt") else SPACE
+	var st = line.getStyleAt(x) if line.has_method("getStyleAt") else TextStyle.EMPTY
+	return [cp, st]
