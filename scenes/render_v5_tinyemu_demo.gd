@@ -12,8 +12,10 @@ const DEFAULT_LATIN_MONO_FONT_PATH := "res://addons/jediterm/render/fonts/jet_br
 @export var initial_cols: int = 80
 @export var initial_rows: int = 24
 
+@export var bios_path: String = ""
 @export var kernel_path: String = ""
-@export var rootfs_path: String = ""
+@export var initrd_path: String = ""
+@export var rootfs_path: String = "" # virtio-blk (/dev/vda) disk image route
 @export var ram_size_mb: int = 128
 
 @onready var terminal_control: Control = $TerminalControl
@@ -101,7 +103,48 @@ func _try_start_tinyemu() -> void:
 	if _vm.has_signal("process_exited"):
 		_vm.process_exited.connect(_on_vm_exited)
 
-	var err := int(_vm.open(int(initial_cols), int(initial_rows), String(kernel_path), String(rootfs_path), int(ram_size_mb)))
+	var bios_res := String(bios_path).strip_edges()
+	var kernel_res := String(kernel_path).strip_edges()
+	var initrd_res := String(initrd_path).strip_edges()
+	var rootfs_res := String(rootfs_path).strip_edges()
+
+	if bios_res == "":
+		bios_res = "res://addons/jediterm/native/tinyemu/images/out/bbl64.bin"
+	if kernel_res == "":
+		kernel_res = "res://addons/jediterm/native/tinyemu/images/out/kernel-riscv64.bin"
+	if initrd_res == "":
+		initrd_res = "res://addons/jediterm/native/tinyemu/images/out/initrd-riscv64.cpio"
+	if rootfs_res == "":
+		rootfs_res = "res://addons/jediterm/native/tinyemu/images/out/root-riscv64.bin"
+
+	var bios_os := _to_os_path(bios_res)
+	var kernel_os := _to_os_path(kernel_res)
+	var initrd_os := _to_os_path(initrd_res)
+	var rootfs_os := _to_os_path(rootfs_res)
+
+	if not FileAccess.file_exists(bios_os):
+		status.text = "TinyEmuVM: BIOS not found: %s" % bios_res
+		_vm = null
+		return
+	if not FileAccess.file_exists(kernel_os):
+		status.text = "TinyEmuVM: kernel not found: %s" % kernel_res
+		_vm = null
+		return
+
+	var has_initrd := FileAccess.file_exists(initrd_os)
+	var has_rootfs := FileAccess.file_exists(rootfs_os)
+
+	var err := ERR_UNAVAILABLE
+	# Prefer prebuilt disk image (rootfs) route. initrd from other workflows may exist but be incompatible with the selected kernel.
+	if has_rootfs and _vm.has_method("open_from_disk_images"):
+		err = int(_vm.open_from_disk_images(int(initial_cols), int(initial_rows), bios_os, kernel_os, rootfs_os, int(ram_size_mb)))
+	elif has_initrd and _vm.has_method("open_from_images"):
+		err = int(_vm.open_from_images(int(initial_cols), int(initial_rows), bios_os, kernel_os, initrd_os, int(ram_size_mb)))
+	else:
+		status.text = "TinyEmuVM: 缺少镜像文件（需要 root-riscv64.bin 或 initrd-riscv64.cpio）"
+		_vm = null
+		return
+
 	if err != OK:
 		status.text = "TinyEmuVM: open failed (%d)" % err
 		_vm = null
@@ -110,7 +153,7 @@ func _try_start_tinyemu() -> void:
 	if terminal_control.has_method("set_terminal_output"):
 		terminal_control.set_terminal_output(_vm)
 
-	status.text = "TinyEmuVM: OK (stub)"
+	status.text = "TinyEmuVM: started (booting)"
 
 func _on_vm_data_received(_data: PackedByteArray) -> void:
 	# Data is processed in _process() via poll_data().
@@ -119,3 +162,8 @@ func _on_vm_data_received(_data: PackedByteArray) -> void:
 func _on_vm_exited(exit_code: int) -> void:
 	status.text = "TinyEmuVM: exited (%d)" % int(exit_code)
 
+func _to_os_path(p: String) -> String:
+	var s := p.strip_edges()
+	if s.begins_with("res://") or s.begins_with("user://"):
+		return ProjectSettings.globalize_path(s)
+	return s

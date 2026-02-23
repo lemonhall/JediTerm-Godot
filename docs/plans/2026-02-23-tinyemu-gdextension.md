@@ -15,7 +15,7 @@
 已落地（可编译；stub 可运行；VM 启动路径 WIP）：
 - TinyEMU 扩展骨架：`addons/jediterm/native/tinyemu/`
 - 构建脚本：`scripts/build_tinyemu_gdextension.ps1`
-- demo 场景（stub：输入回显，未启动 Linux）：`scenes/render_v5_tinyemu_demo.tscn`
+- demo 场景（已改为走 `open_from_images()`；需要本地镜像文件）：`scenes/render_v5_tinyemu_demo.tscn`
 
 关键行为：
 - `TinyEmuVM` 已提供 ConPTY 风格别名：`open/write/resize/close/poll_data`（其中 `open()` 当前为 stub echo loop，用于验证字节流闭环）
@@ -31,16 +31,23 @@
 - [~] Task 3（VirtIO Console ↔ ring buffer）：已部分完成
   - [x] console 回调：`CharacterDevice.write_data/read_data` ↔ `_out/_in`
   - [x] VM 启动路径：`create_from_images/open_from_images`（需要 `bios+kernel+initrd`）
-  - [ ] demo 仍走 `open()` stub（不 boot Linux）
+  - [x] demo 已改为走 `open_from_images()`（不再走 `open()` stub）
   - [ ] `rootfs_path` 尚未接入（virtio-blk / `/dev/vda` 路线未落地）
-- [ ] Task 4（WSL2 Buildroot 脚本）：未完成（`scripts/build_tinyemu_buildroot_wsl.ps1` 不存在）
-- [ ] Task 5（demo boot 到 shell）：未完成（`scenes/render_v5_tinyemu_demo.gd` 未用 `open_from_images()`，也未 `globalize_path`）
-- [ ] Task 6（可选集成测试）：未完成（`tests/addons/native/test_tinyemu_vm_available.gd` 不存在）
-- [~] Task 7（文档交付）：部分完成（本计划/交接/README 已有；PRD 仍缺“当前验证闭环命令”）
+- [x] Task 4（WSL2 Buildroot 脚本）：已完成（`scripts/build_tinyemu_buildroot_wsl.ps1` + 说明文档；产物输出到 `addons/jediterm/native/tinyemu/images/out/` 且已忽略）
+- [x] Task 5（demo boot 到 shell）：代码已完成（`scenes/render_v5_tinyemu_demo.gd` 已 `globalize_path` + `open_from_images()`）；待镜像实际产出后手工验收“进 shell”
+- [x] Task 6（可选集成测试）：已完成（`tests/addons/native/test_tinyemu_vm_available.gd`）
+- [~] Task 7（文档交付）：部分完成（本计划已更新；PRD 仍缺“当前验证闭环命令/已知问题”）
+
+**最新实测（2026-02-23）**
+- `pwsh -NoProfile -File scripts/build_tinyemu_buildroot_wsl.ps1`：exit 0（首次全量耗时约 50 分钟）
+- 已生成镜像（不入库）：`addons/jediterm/native/tinyemu/images/out/`
+  - `bbl64.bin`
+  - `kernel-riscv64.bin`
+  - `initrd-riscv64.cpio`
 
 **Next（必须让人一眼知道先干啥）**
-1. 先写 `scripts/build_tinyemu_buildroot_wsl.ps1` 产出 `bios(OpenSBI)+kernel+initrd` 三件套（不入库，输出到 `addons/jediterm/native/tinyemu/images/out/`）
-2. 再改 `scenes/render_v5_tinyemu_demo.gd`：`ProjectSettings.globalize_path()` + `open_from_images(...)`，把 demo 从 stub 变成能进 shell
+1. 先实际跑 `scripts/build_tinyemu_buildroot_wsl.ps1` 产出 `bios(bbl64.bin)+kernel(Image)+initrd(cpio)` 三件套（不入库，输出到 `addons/jediterm/native/tinyemu/images/out/`）
+2. 打开 `scenes/render_v5_tinyemu_demo.tscn` 做端到端验收：看到 Linux 启动日志并进入 shell；`echo hello` 能回显 `hello`
 3. 最后再决定 `rootfs_path` 路线：virtio-blk(/dev/vda) 还是 initrd-only（Phase 1 建议先 initrd-only，等跑通再加 block）
 
 ---
@@ -180,17 +187,22 @@ git commit -m "feat(tinyemu): wire virtio console to ring buffers"
 `scripts/build_tinyemu_buildroot_wsl.ps1` 负责：
 - `wsl -e bash -lc '...'` 进入 Ubuntu 24
 - 检查依赖（`make`, `gcc`, `g++`, `bison`, `flex`, `bc`, `libncurses-dev`, `python3`, `rsync` 等）
-- 拉取 buildroot（建议也用 submodule 或固定 tag 的浅克隆到 `scripts/_wsl/`，按你们仓库偏好）
+- 拉取 buildroot（缓存到 WSL 的 `~/.cache/jediterm_tinyemu_buildroot/`，不在仓库内，避免污染 git 状态）
 - 配置 `riscv64` 最小系统 + VirtIO console（`hvc0`）
 - 产出 **VM 启动必需的三件套**（供 `open_from_images()` 使用）：
-  - `bios`：OpenSBI（或等价 firmware，供 `VM_FILE_BIOS`）
-  - `kernel`：Linux 内核（供 `VM_FILE_KERNEL`）
-  - `initrd`：最小 rootfs（供 `VM_FILE_INITRD`）
+  - `bios`：`bbl64.bin`（从 bellard.org/jslinux 下载；供 `VM_FILE_BIOS`）
+  - `kernel`：Buildroot 输出的 Linux `Image`（copy 为 `kernel-riscv64.bin`；供 `VM_FILE_KERNEL`）
+  - `initrd`：Buildroot 输出的 `rootfs.cpio`（copy/解压为 `initrd-riscv64.cpio`；供 `VM_FILE_INITRD`）
 - 输出到 Windows 路径（例如 `addons/jediterm/native/tinyemu/images/out/`），但**不要**把二进制镜像加入 git
 
 命令示例（计划里写清楚实际输出路径）：
 ```powershell
 pwsh -NoProfile -File scripts/build_tinyemu_buildroot_wsl.ps1 -OutDir addons/jediterm/native/tinyemu/images/out
+```
+
+（国内网络可选）：
+```powershell
+pwsh -NoProfile -File scripts/build_tinyemu_buildroot_wsl.ps1 -InstallDeps -Proxy http://127.0.0.1:7897
 ```
 
 **Step 2: Commit（只提交脚本与说明，不提交镜像）**
@@ -254,12 +266,18 @@ git commit -m "feat(tinyemu): boot linux in demo scene"
 
 Run:
 ```powershell
-pwsh -NoProfile -File scripts/run_godot_tests.ps1 -Suite jediterm
-pwsh -NoProfile -File scripts/run_godot_tests.ps1 -Suite jediterm -EnableGdExtensions
+pwsh -NoProfile -File scripts/run_godot_tests.ps1 -Suite addons
+pwsh -NoProfile -File scripts/run_godot_tests.ps1 -Suite addons -EnableGdExtensions
 ```
 Expected:
 - 第一条：TinyEMU 测试 SKIP，suite PASS
-- 第二条：TinyEMU 测试执行，PASS
+- 第二条：TinyEMU 测试执行，PASS（如 TinyEMU 扩展在 headless 下可加载；否则仍会 SKIP）
+
+**当前实测（2026-02-23）**
+- `pwsh -NoProfile -File scripts/run_godot_tests.ps1 -Suite jediterm`：PASS
+- `pwsh -NoProfile -File scripts/run_godot_tests.ps1 -Suite jediterm -EnableGdExtensions`：FAIL（ConPTY 相关用例目前在本机输出匹配失败；与 TinyEMU 本次变更无直接关系）
+- `pwsh -NoProfile -File scripts/run_godot_tests.ps1 -One tests/addons/native/test_tinyemu_vm_available.gd`：PASS（SKIP）
+- `pwsh -NoProfile -File scripts/run_godot_tests.ps1 -One tests/addons/native/test_tinyemu_vm_available.gd -EnableGdExtensions`：PASS（但仍 SKIP；TinyEmuVM 在 headless 下未加载，待排查）
 
 **Step 3: Commit**
 

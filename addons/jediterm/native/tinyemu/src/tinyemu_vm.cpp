@@ -108,6 +108,7 @@ TinyEmuVM::~TinyEmuVM() {
 void TinyEmuVM::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("create", "kernel_path", "rootfs_path", "ram_size_mb"), &TinyEmuVM::create, DEFVAL(128));
 	ClassDB::bind_method(D_METHOD("create_from_images", "bios_path", "kernel_path", "initrd_path", "ram_size_mb"), &TinyEmuVM::create_from_images, DEFVAL(128));
+	ClassDB::bind_method(D_METHOD("create_from_disk_images", "bios_path", "kernel_path", "rootfs_path", "ram_size_mb"), &TinyEmuVM::create_from_disk_images, DEFVAL(128));
 	ClassDB::bind_method(D_METHOD("destroy"), &TinyEmuVM::destroy);
 	ClassDB::bind_method(D_METHOD("is_running"), &TinyEmuVM::is_running);
 
@@ -121,6 +122,7 @@ void TinyEmuVM::_bind_methods() {
 	// ConPTY-like aliases
 	ClassDB::bind_method(D_METHOD("open", "cols", "rows", "kernel_path", "rootfs_path", "ram_size_mb"), &TinyEmuVM::open, DEFVAL(128));
 	ClassDB::bind_method(D_METHOD("open_from_images", "cols", "rows", "bios_path", "kernel_path", "initrd_path", "ram_size_mb"), &TinyEmuVM::open_from_images, DEFVAL(128));
+	ClassDB::bind_method(D_METHOD("open_from_disk_images", "cols", "rows", "bios_path", "kernel_path", "rootfs_path", "ram_size_mb"), &TinyEmuVM::open_from_disk_images, DEFVAL(128));
 	ClassDB::bind_method(D_METHOD("write", "data"), &TinyEmuVM::write);
 	ClassDB::bind_method(D_METHOD("resize", "cols", "rows"), &TinyEmuVM::resize);
 	ClassDB::bind_method(D_METHOD("close"), &TinyEmuVM::close);
@@ -155,6 +157,23 @@ Error TinyEmuVM::create_from_images(const String &bios_path, const String &kerne
 	_kernel_path = kernel_path;
 	_initrd_path = initrd_path;
 	_rootfs_path = "";
+	_ram_mb = ram_size_mb > 0 ? ram_size_mb : 128;
+	_stop_requested.store(false);
+	_start_worker();
+	return OK;
+}
+
+Error TinyEmuVM::create_from_disk_images(const String &bios_path, const String &kernel_path, const String &rootfs_path, int ram_size_mb) {
+	if (_running.load()) {
+		return ERR_ALREADY_IN_USE;
+	}
+	if (bios_path.is_empty() || kernel_path.is_empty() || rootfs_path.is_empty()) {
+		return ERR_INVALID_PARAMETER;
+	}
+	_bios_path = bios_path;
+	_kernel_path = kernel_path;
+	_rootfs_path = rootfs_path;
+	_initrd_path = "";
 	_ram_mb = ram_size_mb > 0 ? ram_size_mb : 128;
 	_stop_requested.store(false);
 	_start_worker();
@@ -231,6 +250,15 @@ int TinyEmuVM::open_from_images(int cols, int rows, const String &bios_path, con
 	return create_from_images(bios_path, kernel_path, initrd_path, ram_size_mb);
 }
 
+int TinyEmuVM::open_from_disk_images(int cols, int rows, const String &bios_path, const String &kernel_path, const String &rootfs_path, int ram_size_mb) {
+	if (cols <= 0 || rows <= 0) {
+		return ERR_INVALID_PARAMETER;
+	}
+	_cols = cols;
+	_rows = rows;
+	return create_from_disk_images(bios_path, kernel_path, rootfs_path, ram_size_mb);
+}
+
 int TinyEmuVM::write(const PackedByteArray &data) {
 	write_console(data);
 	return static_cast<int>(data.size());
@@ -297,7 +325,7 @@ void TinyEmuVM::_worker_main() {
 	if (_bios_path.is_empty()) {
 		const char *banner =
 				"[TinyEmuVM] WIP stub (not booting Linux yet)\r\n"
-				"Call create_from_images(bios,kernel,initrd) to boot a VM.\r\n"
+				"Call create_from_images(bios,kernel,initrd) OR create_from_disk_images(bios,kernel,rootfs) to boot a VM.\r\n"
 				"Type anything; bytes are echoed back via poll_data().\r\n\r\n";
 		_out.push(reinterpret_cast<const uint8_t *>(banner), strlen(banner));
 
@@ -320,6 +348,7 @@ void TinyEmuVM::_worker_main() {
 	std::vector<uint8_t> bios_bytes;
 	std::vector<uint8_t> kernel_bytes;
 	std::vector<uint8_t> initrd_bytes;
+	std::vector<uint8_t> rootfs_bytes;
 
 	if (!read_file_bytes(_bios_path, bios_bytes, err)) {
 		const String msg = "[TinyEmuVM] failed to read bios: " + err + "\r\n";
@@ -341,6 +370,73 @@ void TinyEmuVM::_worker_main() {
 			return;
 		}
 	}
+	if (!_rootfs_path.is_empty()) {
+		if (!read_file_bytes(_rootfs_path, rootfs_bytes, err)) {
+			const String msg = "[TinyEmuVM] failed to read rootfs: " + err + "\r\n";
+			const CharString c = msg.utf8();
+			_out.push(reinterpret_cast<const uint8_t *>(c.get_data()), static_cast<size_t>(c.length()));
+			return;
+		}
+	}
+
+	struct MemBlockDeviceState {
+		BlockDevice bs = {};
+		std::vector<uint8_t> data;
+	};
+
+	auto mem_get_sector_count = [](BlockDevice *bs) -> int64_t {
+		auto *st = static_cast<MemBlockDeviceState *>(bs->opaque);
+		const int64_t sz = static_cast<int64_t>(st->data.size());
+		if (sz <= 0) {
+			return 0;
+		}
+		// 512-byte sectors.
+		return (sz + 511) / 512;
+	};
+	auto mem_read_async = [](BlockDevice *bs, uint64_t sector_num, uint8_t *buf, int n, BlockDeviceCompletionFunc *cb, void *opaque) -> int {
+		auto *st = static_cast<MemBlockDeviceState *>(bs->opaque);
+		const uint64_t offset = sector_num * 512ULL;
+		const uint64_t len = static_cast<uint64_t>(n) * 512ULL;
+		(void)cb;
+		(void)opaque;
+		if (buf == nullptr || n <= 0) {
+			return 0;
+		}
+
+		const uint64_t size = static_cast<uint64_t>(st->data.size());
+		if (offset >= size) {
+			memset(buf, 0, static_cast<size_t>(len));
+			return 0;
+		}
+
+		const uint64_t avail = size - offset;
+		const uint64_t copy_len = avail < len ? avail : len;
+		memcpy(buf, st->data.data() + static_cast<size_t>(offset), static_cast<size_t>(copy_len));
+		if (copy_len < len) {
+			memset(buf + static_cast<size_t>(copy_len), 0, static_cast<size_t>(len - copy_len));
+		}
+		return 0;
+	};
+	auto mem_write_async = [](BlockDevice *bs, uint64_t sector_num, const uint8_t *buf, int n, BlockDeviceCompletionFunc *cb, void *opaque) -> int {
+		auto *st = static_cast<MemBlockDeviceState *>(bs->opaque);
+		const uint64_t offset = sector_num * 512ULL;
+		const uint64_t len = static_cast<uint64_t>(n) * 512ULL;
+		(void)cb;
+		(void)opaque;
+		if (buf == nullptr || n <= 0) {
+			return 0;
+		}
+
+		const uint64_t size = static_cast<uint64_t>(st->data.size());
+		if (offset >= size) {
+			return -1;
+		}
+
+		const uint64_t avail = size - offset;
+		const uint64_t copy_len = avail < len ? avail : len;
+		memcpy(st->data.data() + static_cast<size_t>(offset), buf, static_cast<size_t>(copy_len));
+		return copy_len < len ? -1 : 0;
+	};
 
 	CharacterDevice console_dev = {};
 	console_dev.opaque = this;
@@ -353,7 +449,25 @@ void TinyEmuVM::_worker_main() {
 	p.ram_size = static_cast<uint64_t>(_ram_mb) << 20;
 	p.rtc_real_time = true;
 	p.console = &console_dev;
-	p.cmdline = dup_cstr("console=hvc0");
+	if (!_rootfs_path.is_empty()) {
+		p.cmdline = dup_cstr("console=hvc0 root=/dev/vda rw");
+	} else {
+		p.cmdline = dup_cstr("console=hvc0");
+	}
+
+	{
+		String boot_mode = "[TinyEmuVM] boot mode: ";
+		if (!_rootfs_path.is_empty()) {
+			boot_mode += "disk rootfs (/dev/vda)";
+		} else if (!_initrd_path.is_empty()) {
+			boot_mode += "initrd (cpio)";
+		} else {
+			boot_mode += "kernel-only";
+		}
+		boot_mode += "\r\n";
+		const CharString c = boot_mode.utf8();
+		_out.push(reinterpret_cast<const uint8_t *>(c.get_data()), static_cast<size_t>(c.length()));
+	}
 
 	p.files[VM_FILE_BIOS].buf = bios_bytes.data();
 	p.files[VM_FILE_BIOS].len = static_cast<int>(bios_bytes.size());
@@ -363,6 +477,18 @@ void TinyEmuVM::_worker_main() {
 		p.files[VM_FILE_INITRD].buf = initrd_bytes.data();
 		p.files[VM_FILE_INITRD].len = static_cast<int>(initrd_bytes.size());
 	}
+	MemBlockDeviceState *mem_drive = nullptr;
+	if (!rootfs_bytes.empty()) {
+		mem_drive = new MemBlockDeviceState();
+		mem_drive->data = std::move(rootfs_bytes);
+		mem_drive->bs.opaque = mem_drive;
+		mem_drive->bs.get_sector_count = mem_get_sector_count;
+		mem_drive->bs.read_async = mem_read_async;
+		mem_drive->bs.write_async = mem_write_async;
+
+		p.drive_count = 1;
+		p.tab_drive[0].block_dev = &mem_drive->bs;
+	}
 
 	VirtMachine *vm = p.vmc->virt_machine_init(&p);
 	std::free(p.machine_name);
@@ -371,6 +497,10 @@ void TinyEmuVM::_worker_main() {
 	p.cmdline = nullptr;
 
 	if (vm == nullptr) {
+		if (mem_drive) {
+			delete mem_drive;
+			mem_drive = nullptr;
+		}
 		const char *msg = "[TinyEmuVM] virt_machine_init failed\r\n";
 		_out.push(reinterpret_cast<const uint8_t *>(msg), strlen(msg));
 		return;
@@ -421,4 +551,8 @@ void TinyEmuVM::_worker_main() {
 	}
 
 	vm->vmc->virt_machine_end(vm);
+	if (mem_drive) {
+		delete mem_drive;
+		mem_drive = nullptr;
+	}
 }

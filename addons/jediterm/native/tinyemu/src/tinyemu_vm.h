@@ -21,6 +21,7 @@ public:
 	// PRD API
 	Error create(const String &kernel_path, const String &rootfs_path, int ram_size_mb = 128);
 	Error create_from_images(const String &bios_path, const String &kernel_path, const String &initrd_path, int ram_size_mb = 128);
+	Error create_from_disk_images(const String &bios_path, const String &kernel_path, const String &rootfs_path, int ram_size_mb = 128);
 	void destroy();
 	bool is_running() const;
 
@@ -35,6 +36,7 @@ public:
 	// ConPTY-like convenience aliases (for TerminalControl integration)
 	int open(int cols, int rows, const String &kernel_path, const String &rootfs_path, int ram_size_mb = 128);
 	int open_from_images(int cols, int rows, const String &bios_path, const String &kernel_path, const String &initrd_path, int ram_size_mb = 128);
+	int open_from_disk_images(int cols, int rows, const String &bios_path, const String &kernel_path, const String &rootfs_path, int ram_size_mb = 128);
 	int write(const PackedByteArray &data);
 	int resize(int cols, int rows);
 	void close();
