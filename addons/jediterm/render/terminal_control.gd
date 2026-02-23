@@ -245,6 +245,16 @@ func _handle_mouse_event_for_selection(event: InputEvent) -> bool:
 	if w <= 0 or h <= 0:
 		return false
 
+	# 右键：有选区则复制，无选区则粘贴
+	if event is InputEventMouseButton and int(event.button_index) == MOUSE_BUTTON_RIGHT and bool(event.pressed):
+		if _selection != null:
+			copy_selection_to_clipboard()
+			clear_selection()
+		else:
+			paste_from_clipboard()
+		accept_event()
+		return true
+
 	if event is InputEventMouseButton and int(event.button_index) == int(selection_mouse_button):
 		var cell := _event_pos_to_cell(Vector2(event.position), w, h)
 		if bool(event.pressed):
@@ -274,6 +284,7 @@ func _handle_mouse_event_for_selection(event: InputEvent) -> bool:
 		return true
 
 	return false
+
 
 func _event_pos_to_cell(pos: Vector2, buffer_width: int, buffer_height: int) -> Vector2i:
 	var cw := maxi(1, int(cell_width))
