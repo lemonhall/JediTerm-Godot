@@ -25,10 +25,12 @@ func _init() -> void:
 	var plan = draw_plan_script.new()
 	plan.build_from_snapshot(snap, {"cell_width": 10, "cell_height": 20})
 
-	for op in plan.ops:
-		if op.get("type", "") != "glyph":
-			continue
-		if int(op.get("cp", 0)) == int(CharUtils.DWC):
+	if not T.require_true(self, plan.has_method("get") and plan.get("glyph_ops") is PackedFloat32Array, "plan exposes glyph_ops"):
+		return
+	var glyph_ops: PackedFloat32Array = plan.get("glyph_ops")
+	for i in range(0, glyph_ops.size(), 7):
+		var cp := int(glyph_ops[i + 2])
+		if cp == int(CharUtils.DWC):
 			T.fail_and_quit(self, "DWC cell must not render a glyph op")
 			return
 

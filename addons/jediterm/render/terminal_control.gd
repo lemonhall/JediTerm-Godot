@@ -431,6 +431,10 @@ func _set_ime_active_requested(active: bool) -> void:
 	if not _is_ime_supported():
 		return
 	DisplayServer.window_set_ime_active(bool(active), _get_window_id())
+	if OS.has_feature("web"):
+		var ime_obj: Variant = JavaScriptBridge.get_interface("JediTermIME")
+		if ime_obj != null:
+			ime_obj.setEnabled(bool(active))
 
 func _update_ime_position(force: bool) -> void:
 	if not bool(_ime_active_requested):
@@ -454,6 +458,11 @@ func _update_ime_position(force: bool) -> void:
 	_ime_last_cursor_cell = cursor_cell
 	_ime_last_position = window_pos
 	DisplayServer.window_set_ime_position(window_pos, _get_window_id())
+	if OS.has_feature("web"):
+		var ime_obj: Variant = JavaScriptBridge.get_interface("JediTermIME")
+		if ime_obj != null:
+			# Best-effort: keep the hidden IME textarea near the caret for better candidate positioning.
+			ime_obj.setCursorPosition(int(window_pos.x), int(window_pos.y))
 
 func _should_consume_keycode(godot_keycode: int) -> bool:
 	return consume_keys.has(int(godot_keycode))

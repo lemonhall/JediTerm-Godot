@@ -25,20 +25,19 @@ func _init() -> void:
 		"cursor_bg": cursor_bg,
 	})
 
-	var found := false
-	for op in plan.ops:
-		if op.get("type") != "bg":
-			continue
-		if int(op.get("cell_x", -1)) != 0 or int(op.get("cell_y", -1)) != 0:
-			continue
-		found = true
-		if not T.require_true(self, op.get("color") is Color, "bg op has Color"):
-			return
-		# Cursor should override selection background.
-		if not T.require_eq(self, op.get("color"), cursor_bg, "cursor bg overrides selection bg"):
-			return
+	if not T.require_true(self, plan.has_method("get") and plan.get("bg_ops") is PackedFloat32Array, "plan exposes bg_ops"):
+		return
+	var bg_ops: PackedFloat32Array = plan.get("bg_ops")
+	if not T.require_true(self, bg_ops.size() >= 8, "bg_ops has at least one op"):
+		return
 
-	if not T.require_true(self, found, "bg op for cell(0,0) exists"):
+	# First bg op corresponds to cell(0,0).
+	var r := float(bg_ops[4])
+	var g := float(bg_ops[5])
+	var b := float(bg_ops[6])
+	var a := float(bg_ops[7])
+	var got := Color(r, g, b, a)
+	if not T.require_eq(self, got, cursor_bg, "cursor bg overrides selection bg"):
 		return
 
 	T.pass_and_quit(self)

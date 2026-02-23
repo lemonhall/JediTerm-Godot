@@ -30,19 +30,16 @@ func _init() -> void:
 
 	var plan = c.build_draw_plan()
 
-	var found := false
-	for op in plan.ops:
-		if String(op.get("type", "")) != "bg":
-			continue
-		if int(op.get("cell_x", -1)) != 0 or int(op.get("cell_y", -1)) != 0:
-			continue
-		found = true
-		if not T.require_eq(self, Color(op.get("color")), c.cursor_bg, "cursor bg is at cell(0,0)"):
-			return
+	if not T.require_true(self, plan != null and plan.has_method("get") and plan.get("bg_ops") is PackedFloat32Array, "draw plan exposes bg_ops"):
+		return
+	var bg_ops: PackedFloat32Array = plan.get("bg_ops")
+	if not T.require_true(self, bg_ops.size() >= 8, "bg_ops has at least one op"):
+		return
 
-	if not T.require_true(self, found, "bg op for cell(0,0) exists"):
+	# First bg op corresponds to cell(0,0).
+	var got := Color(float(bg_ops[4]), float(bg_ops[5]), float(bg_ops[6]), float(bg_ops[7]))
+	if not T.require_eq(self, got, c.cursor_bg, "cursor bg is at cell(0,0)"):
 		return
 
 	c.free()
 	T.pass_and_quit(self)
-

@@ -89,17 +89,6 @@ body {
 	text-align: center;
 	z-index: 1;
 }
-
-#ime-input {
-	position: fixed;
-	left: -9999px;
-	top: 0;
-	width: 1px;
-	height: 1px;
-	opacity: 0;
-	z-index: 9999;
-	ime-mode: active;
-}
 		</style>
 		<link id="-gd-engine-icon" rel="icon" type="image/png" href="JediTerm-Godot.icon.png" />
 <link rel="apple-touch-icon" href="JediTerm-Godot.apple-touch-icon.png"/>
@@ -110,7 +99,8 @@ body {
 			Your browser does not support the canvas tag.
 		</canvas>
 
-		<textarea id="ime-input" autocapitalize="off" autocomplete="off" spellcheck="false"></textarea>
+  <textarea id="ime-input" autocapitalize="off" autocomplete="off" spellcheck="false"></textarea>
+
 
 		<noscript>
 			Your browser does not support JavaScript.
@@ -123,93 +113,15 @@ body {
 		</div>
 
 		<script src="JediTerm-Godot.js"></script>
-		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"JediTerm-Godot","experimentalVK":false,"fileSizes":{"JediTerm-Godot.pck":51305480,"JediTerm-Godot.wasm":35740641},"godotPoolSize":4};
+		
+<!-- JEDITERM_IME_PATCH_BEGIN -->
+<script src="JediTerm-Godot.ime_patch.js"></script>
+<!-- JEDITERM_IME_PATCH_END -->
+<script>
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"JediTerm-Godot","experimentalVK":false,"fileSizes":{"JediTerm-Godot.pck":51333552,"JediTerm-Godot.wasm":37686550},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
-/* ============ IME Bridge ============ */
-(function () {
-	const imeInput = document.getElementById('ime-input');
-	const canvas = document.getElementById('canvas');
-	let imeWs = null;   // 复用终端的 WebSocket
-	let isComposing = false;
-
-	// 从 Godot 的 WebSocket 连接中拿到引用，或者自己建一个
-	// 这里用一个全局钩子，让 GDScript 端连接成功后把 ws url 告诉我们
-	window.JediTermIME = {
-		// GDScript 端调用：window.JediTermIME.setBridgeUrl("ws://127.0.0.1:8765/ws")
-		setBridgeUrl: function (url) {
-			// 不需要自己建 ws，直接用 sendText 就行
-		},
-		// 直接发送文本到终端（由 GDScript 端注入实现）
-		_sendText: null,
-		sendText: function (text) {
-			if (window.JediTermIME._sendText) {
-				window.JediTermIME._sendText(text);
-			}
-		}
-	};
-
-	// 点击 canvas 时把焦点偷偷给 textarea（触发 IME）
-	canvas.addEventListener('click', function () {
-		imeInput.focus({ preventScroll: true });
-	});
-
-	// canvas 的 keydown 也转给 textarea（保持 IME 焦点）
-	canvas.addEventListener('focus', function () {
-		imeInput.focus({ preventScroll: true });
-	});
-
-	imeInput.addEventListener('compositionstart', function () {
-		isComposing = true;
-	});
-
-	imeInput.addEventListener('compositionend', function (e) {
-		isComposing = false;
-		const text = e.data;
-		if (text) {
-			window.JediTermIME.sendText(text);
-		}
-		imeInput.value = '';
-	});
-
-	// 非 IME 按键（英文、回车、方向键等）交还给 canvas
-	imeInput.addEventListener('keydown', function (e) {
-		if (!isComposing) {
-			// 把事件转发给 canvas，让 Godot 处理
-			canvas.dispatchEvent(new KeyboardEvent('keydown', {
-				key: e.key,
-				code: e.code,
-				keyCode: e.keyCode,
-				which: e.which,
-				shiftKey: e.shiftKey,
-				ctrlKey: e.ctrlKey,
-				altKey: e.altKey,
-				metaKey: e.metaKey,
-				bubbles: true,
-				cancelable: true
-			}));
-			canvas.dispatchEvent(new KeyboardEvent('keyup', {
-				key: e.key,
-				code: e.code,
-				keyCode: e.keyCode,
-				which: e.which,
-				shiftKey: e.shiftKey,
-				ctrlKey: e.ctrlKey,
-				altKey: e.altKey,
-				metaKey: e.metaKey,
-				bubbles: true,
-				cancelable: true
-			}));
-			e.preventDefault();
-			// 清掉英文字符，防止堆积
-			imeInput.value = '';
-		}
-	});
-})();
-
-/* ============ Godot Engine Startup ============ */
 (function () {
 	const statusOverlay = document.getElementById('status');
 	const statusProgress = document.getElementById('status-progress');
@@ -269,6 +181,7 @@ const engine = new Engine(GODOT_CONFIG);
 			} catch (err) {
 				serviceWorkerRegistrationPromise = Promise.reject(new Error('Service worker registration failed.'));
 			}
+			// There's a chance that installing the service worker would fix the issue
 			Promise.race([
 				serviceWorkerRegistrationPromise.then((registration) => {
 					if (registration != null) {
@@ -276,15 +189,18 @@ const engine = new Engine(GODOT_CONFIG);
 					}
 					return registration;
 				}).then(() => engine.installServiceWorker()),
+				// For some reason, `getRegistration()` can stall
 				new Promise((resolve) => {
 					setTimeout(() => resolve(), 2000);
 				}),
 			]).then(() => {
+				// Reload if there was no error.
 				window.location.reload();
 			}).catch((err) => {
 				console.error('Error while registering service worker:', err);
 			});
 		} else {
+			// Display the message as usual
 			const missingMsg = 'Error\nThe following features required to run Godot projects on the Web are missing:\n';
 			displayFailureNotice(missingMsg + missing.join('\n'));
 		}
@@ -308,3 +224,4 @@ const engine = new Engine(GODOT_CONFIG);
 		</script>
 	</body>
 </html>
+

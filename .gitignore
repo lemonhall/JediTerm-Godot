@@ -21,3 +21,6 @@ __pycache__/
 
 # godot output
 output/*
+
+# Web export noise
+web/*.import

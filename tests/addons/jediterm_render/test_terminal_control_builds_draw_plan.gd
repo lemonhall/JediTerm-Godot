@@ -19,8 +19,13 @@ func _init() -> void:
 	var plan = c.build_draw_plan()
 
 	var found := false
-	for op in plan.ops:
-		if op.get("type") == "glyph" and int(op.get("cp", 0)) == int("A".unicode_at(0)):
+	if not T.require_true(self, plan != null and plan.has_method("get") and plan.get("glyph_ops") is PackedFloat32Array, "draw plan exposes glyph_ops"):
+		c.free()
+		return
+	var glyph_ops: PackedFloat32Array = plan.get("glyph_ops")
+	for i in range(0, glyph_ops.size(), 7):
+		var cp := int(glyph_ops[i + 2])
+		if cp == int("A".unicode_at(0)):
 			found = true
 			break
 	if not T.require_true(self, found, "draw plan contains glyph A"):

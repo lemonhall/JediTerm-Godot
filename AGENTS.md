@@ -24,6 +24,13 @@
 - suite：`scripts\run_godot_tests.ps1 -Suite jediterm`
 - 全量：`scripts\run_godot_tests.ps1 -Suite all`
 
+Web 导出（含 IME 补丁，一键）：
+- 导出 + 注入 IME patch：`pwsh -NoProfile -File scripts\export_web_with_ime.ps1`
+  - 默认使用 `export_presets.cfg` 里的 `Web` 预设与其 `export_path`（当前为 `web/JediTerm-Godot.html`）
+  - 如未设置 Godot 路径：先设 `$env:GODOT_WIN_EXE = "E:\Godot_v4.6-stable_win64.exe\Godot_v4.6-stable_win64_console.exe"`
+- 仅重打补丁（不重新导出）：`pwsh -NoProfile -File scripts\export_web_with_ime.ps1 -PatchOnly -OutDir web -OutHtml JediTerm-Godot.html`
+- 本地起静态服务器（含 COOP/COEP 头）：`python server.py 8080`（然后打开 `http://localhost:8080/web/JediTerm-Godot.html`）
+
 Native（Windows ConPTY GDExtension）：
 - 探测 MSVC：`pwsh -NoProfile -File scripts\probe_msvc.ps1`
 - 准备 `godot-cpp`（二选一）：
