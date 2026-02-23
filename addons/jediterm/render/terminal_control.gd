@@ -415,7 +415,14 @@ func _get_window_id() -> int:
 	return 0
 
 func _is_ime_supported() -> bool:
-	return bool(DisplayServer.has_feature(DisplayServer.FEATURE_IME))
+	return bool(_is_ime_supported_for(String(OS.get_name()), bool(DisplayServer.has_feature(DisplayServer.FEATURE_IME))))
+
+static func _is_ime_supported_for(platform_name: String, has_feature_ime: bool) -> bool:
+	# Web export sometimes reports FEATURE_IME as unsupported even though browser IME works
+	# once the engine activates text input. Treat Web as supported to enable IME activation.
+	if platform_name == "Web":
+		return true
+	return bool(has_feature_ime)
 
 func _set_ime_active_requested(active: bool) -> void:
 	_ime_active_requested = bool(active)

@@ -23,6 +23,7 @@ const WebSocketTransport := preload("res://addons/jediterm/transport/websocket_t
 var _terminal: RefCounted = null
 var _buf: RefCounted = null
 var _transport: RefCounted = null
+var _ime_callback: Variant = null
 
 func _ready() -> void:
 	_setup_terminal()
@@ -31,6 +32,7 @@ func _ready() -> void:
 	disconnect_btn.pressed.connect(_on_disconnect_pressed)
 	disconnect_btn.disabled = true
 	status_label.text = "Status: idle"
+	_setup_ime_bridge()
 
 func _exit_tree() -> void:
 	_cleanup_transport()
@@ -71,6 +73,22 @@ func _write_welcome() -> void:
 	_terminal.writeString("2) 填好 Host/User/Password/Token，点 Connect")
 	_terminal.crnl()
 	_terminal.crnl()
+
+func _setup_ime_bridge() -> void:
+	if not OS.has_feature("web"):
+		return
+	_ime_callback = JavaScriptBridge.create_callback(_on_ime_text)
+	JavaScriptBridge.eval("""
+		window.JediTermIME = window.JediTermIME || {};
+	""", true)
+	var ime_obj: Variant = JavaScriptBridge.get_interface("JediTermIME")
+	if ime_obj != null:
+		ime_obj._sendText = _ime_callback
+
+func _on_ime_text(args: Array) -> void:
+	var text: String = str(args[0]) if args.size() > 0 else ""
+	if text.length() > 0 and _transport != null and _transport.has_method("write"):
+		_transport.write(text.to_utf8_buffer())
 
 func _on_connect_pressed() -> void:
 	_cleanup_transport()
@@ -132,7 +150,6 @@ func _on_transport_connected() -> void:
 		sid = String(_transport.get_session_id())
 	status_label.text = "Status: connected (session=%s)" % sid
 
-	# Send an initial resize once SSH session is ready (TerminalControl will also auto-resize on Control resize).
 	var cols_rows := _compute_cols_rows_from_control()
 	if _transport != null and _transport.has_method("resize"):
 		_transport.resize(int(cols_rows.x), int(cols_rows.y))
