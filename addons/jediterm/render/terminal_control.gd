@@ -37,6 +37,8 @@ const DEFAULT_LATIN_MONO_FONT_PATH := "res://addons/jediterm/render/fonts/jet_br
 @export var cursor_blink: bool = true
 @export var cursor_blink_interval: float = 0.5
 
+@export var debug_draw_timing: bool = false
+
 var _cursor_blink_visible: bool = true
 var _cursor_blink_timer: float = 0.0
 
@@ -149,7 +151,7 @@ func build_draw_plan() -> RefCounted:
 func handle_key_event(event: InputEventKey) -> bool:
 	if event == null:
 		return false
-	if not bool(event.pressed) or bool(event.echo):
+	if not bool(event.pressed):
 		return false
 
 	var keycode := int(event.keycode)
@@ -279,19 +281,11 @@ func _event_pos_to_cell(pos: Vector2, buffer_width: int, buffer_height: int) -> 
 	return Vector2i(x, y)
 
 func _draw() -> void:
-	var t0 = Time.get_ticks_usec()
-	var cursor = _get_cursor_cell()
-	print("_draw cursor: %s frame: %d" % [str(cursor), Engine.get_process_frames()])
-	var owner = get_parent()
-	if owner and owner.get("_debug_key_time_usec") and owner._debug_key_time_usec > 0:
-		var now = Time.get_ticks_usec()
-		var elapsed_ms = (now - owner._debug_key_time_usec) / 1000.0
-		print("Key → Draw: %.1f ms" % elapsed_ms)
-		owner._debug_key_time_usec = 0
+	var t0 := Time.get_ticks_usec()
 
-	var t1 = Time.get_ticks_usec()
+	var t1 := Time.get_ticks_usec()
 	var plan = build_draw_plan()
-	var t2 = Time.get_ticks_usec()
+	var t2 := Time.get_ticks_usec()
 
 	if plan == null:
 		return
@@ -301,7 +295,7 @@ func _draw() -> void:
 	var bg_count := bg_data.size() / 8
 	var glyph_count := glyph_data.size() / 7
 
-	var t3 = Time.get_ticks_usec()
+	var t3 := Time.get_ticks_usec()
 	for i in bg_count:
 		var off := i * 8
 		draw_rect(
@@ -309,7 +303,7 @@ func _draw() -> void:
 			Color(bg_data[off + 4], bg_data[off + 5], bg_data[off + 6], bg_data[off + 7]),
 			true
 		)
-	var t4 = Time.get_ticks_usec()
+	var t4 := Time.get_ticks_usec()
 
 	var font := _get_draw_font()
 	var font_size := _get_draw_font_size()
@@ -329,17 +323,19 @@ func _draw() -> void:
 			HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
 			Color(glyph_data[off + 3], glyph_data[off + 4], glyph_data[off + 5], glyph_data[off + 6])
 		)
-	var t5 = Time.get_ticks_usec()
+	var t5 := Time.get_ticks_usec()
 
-	print("build_plan: %.2f ms | bg: %.2f ms | glyph: %.2f ms | total: %.2f ms | bg: %d | glyph: %d" % [
-		(t2 - t1) / 1000.0,
-		(t4 - t3) / 1000.0,
-		(t5 - t4) / 1000.0,
-		(t5 - t0) / 1000.0,
-		bg_count,
-		glyph_count
-	])
-
+	if debug_draw_timing:
+		print("build_plan: %.2f ms | bg: %.2f ms | glyph: %.2f ms | total: %.2f ms | bg: %d | glyph: %d" % [
+			(t2 - t1) / 1000.0,
+			(t4 - t3) / 1000.0,
+			(t5 - t4) / 1000.0,
+			(t5 - t0) / 1000.0,
+			bg_count,
+			glyph_count
+		])
+		
+		
 func _send_bytes(bytes: PackedByteArray) -> bool:
 	if bytes.is_empty():
 		return false
