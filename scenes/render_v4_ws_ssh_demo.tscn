@@ -1,0 +1,107 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scenes/render_v4_ws_ssh_demo.gd" id="1"]
+[ext_resource type="Script" path="res://addons/jediterm/render/terminal_control.gd" id="2"]
+
+[node name="RenderV4WsSshDemo" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1")
+
+[node name="Root" type="MarginContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="VBox" type="VBoxContainer" parent="Root"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="TopPanel" type="PanelContainer" parent="Root/VBox"]
+size_flags_horizontal = 3
+
+[node name="Top" type="VBoxContainer" parent="Root/VBox/TopPanel"]
+size_flags_horizontal = 3
+
+[node name="Info" type="Label" parent="Root/VBox/TopPanel/Top"]
+text = "Render v4 | WebSocket SSH bridge demo"
+
+[node name="Grid" type="GridContainer" parent="Root/VBox/TopPanel/Top"]
+columns = 2
+size_flags_horizontal = 3
+
+[node name="BridgeUrlLabel" type="Label" parent="Root/VBox/TopPanel/Top/Grid"]
+text = "Bridge URL"
+
+[node name="BridgeUrl" type="LineEdit" parent="Root/VBox/TopPanel/Top/Grid"]
+text = "ws://127.0.0.1:8765/ws"
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(360, 0)
+
+[node name="HostLabel" type="Label" parent="Root/VBox/TopPanel/Top/Grid"]
+text = "Host"
+
+[node name="Host" type="LineEdit" parent="Root/VBox/TopPanel/Top/Grid"]
+text = "127.0.0.1"
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(240, 0)
+
+[node name="PortLabel" type="Label" parent="Root/VBox/TopPanel/Top/Grid"]
+text = "Port"
+
+[node name="Port" type="LineEdit" parent="Root/VBox/TopPanel/Top/Grid"]
+text = "22"
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(240, 0)
+
+[node name="UserLabel" type="Label" parent="Root/VBox/TopPanel/Top/Grid"]
+text = "User"
+
+[node name="User" type="LineEdit" parent="Root/VBox/TopPanel/Top/Grid"]
+text = "root"
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(240, 0)
+
+[node name="PasswordLabel" type="Label" parent="Root/VBox/TopPanel/Top/Grid"]
+text = "Password"
+
+[node name="Password" type="LineEdit" parent="Root/VBox/TopPanel/Top/Grid"]
+secret = true
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(240, 0)
+
+[node name="TokenLabel" type="Label" parent="Root/VBox/TopPanel/Top/Grid"]
+text = "Token"
+
+[node name="Token" type="LineEdit" parent="Root/VBox/TopPanel/Top/Grid"]
+text = "dev-token"
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(240, 0)
+
+[node name="Buttons" type="HBoxContainer" parent="Root/VBox/TopPanel/Top"]
+size_flags_horizontal = 3
+
+[node name="Connect" type="Button" parent="Root/VBox/TopPanel/Top/Buttons"]
+text = "Connect"
+
+[node name="Disconnect" type="Button" parent="Root/VBox/TopPanel/Top/Buttons"]
+text = "Disconnect"
+
+[node name="Status" type="Label" parent="Root/VBox/TopPanel/Top"]
+text = "Status: idle"
+
+[node name="TerminalControl" type="Control" parent="Root/VBox"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+focus_mode = 2
+script = ExtResource("2")
+grid_columns = 120
+grid_rows = 30
+terminal_font_size = 24

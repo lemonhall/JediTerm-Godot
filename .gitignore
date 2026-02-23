@@ -6,6 +6,7 @@ refs/*
 # Godot local data
 .godot/
 .godot-user/
+output/
 
 # Native build outputs (GDExtension)
 addons/jediterm/native/bin/
@@ -15,3 +16,8 @@ addons/jediterm/bin/
 # Python caches
 __pycache__/
 *.pyc
+.venv/
+.pytest_cache/
+
+# godot output
+output/*
