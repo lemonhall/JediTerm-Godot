@@ -63,7 +63,7 @@ text = "Host"
 custom_minimum_size = Vector2(240, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "127.0.0.1"
+text = "192.168.50.149"
 
 [node name="PortLabel" type="Label" parent="Root/VBox/TopPanel/Top/Grid" unique_id=1878989622]
 layout_mode = 2
@@ -83,7 +83,7 @@ text = "User"
 custom_minimum_size = Vector2(240, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "root"
+text = "lemonhall"
 
 [node name="PasswordLabel" type="Label" parent="Root/VBox/TopPanel/Top/Grid" unique_id=723197365]
 layout_mode = 2
@@ -116,6 +116,11 @@ text = "Connect"
 [node name="Disconnect" type="Button" parent="Root/VBox/TopPanel/Top/Buttons" unique_id=719686519]
 layout_mode = 2
 text = "Disconnect"
+
+[node name="ToggleForm" type="Button" parent="Root/VBox/TopPanel/Top/Buttons" unique_id=1670021046]
+layout_mode = 2
+custom_minimum_size = Vector2(72, 0)
+text = "Hide"
 
 [node name="Status" type="Label" parent="Root/VBox/TopPanel/Top" unique_id=2012134930]
 layout_mode = 2

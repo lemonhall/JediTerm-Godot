@@ -19,20 +19,27 @@ const WebSocketTransport := preload("res://addons/jediterm/transport/websocket_t
 
 @onready var connect_btn: Button = $Root/VBox/TopPanel/Top/Buttons/Connect
 @onready var disconnect_btn: Button = $Root/VBox/TopPanel/Top/Buttons/Disconnect
+@onready var toggle_form_btn: Button = $Root/VBox/TopPanel/Top/Buttons/ToggleForm
+@onready var form_grid: Control = $Root/VBox/TopPanel/Top/Grid
 
 var _terminal: RefCounted = null
 var _buf: RefCounted = null
 var _transport: RefCounted = null
 var _ime_callback: Variant = null
+var _form_collapsed: bool = false
 
 func _ready() -> void:
 	_setup_terminal()
 	_write_welcome()
+	_apply_default_fields()
 	connect_btn.pressed.connect(_on_connect_pressed)
 	disconnect_btn.pressed.connect(_on_disconnect_pressed)
+	if toggle_form_btn != null:
+		toggle_form_btn.pressed.connect(_on_toggle_form_pressed)
 	disconnect_btn.disabled = true
 	status_label.text = "Status: idle"
 	_setup_ime_bridge()
+	_set_form_collapsed(false)
 
 func _exit_tree() -> void:
 	_cleanup_transport()
@@ -89,6 +96,22 @@ func _on_ime_text(args: Array) -> void:
 	var text: String = str(args[0]) if args.size() > 0 else ""
 	if text.length() > 0 and _transport != null and _transport.has_method("write"):
 		_transport.write(text.to_utf8_buffer())
+
+func _apply_default_fields() -> void:
+	if host_edit != null and String(host_edit.text).strip_edges() == "":
+		host_edit.text = "192.168.50.149"
+	if user_edit != null and String(user_edit.text).strip_edges() == "":
+		user_edit.text = "lemonhall"
+
+func _on_toggle_form_pressed() -> void:
+	_set_form_collapsed(not bool(_form_collapsed))
+
+func _set_form_collapsed(collapsed: bool) -> void:
+	_form_collapsed = bool(collapsed)
+	if form_grid != null:
+		form_grid.visible = not bool(_form_collapsed)
+	if toggle_form_btn != null:
+		toggle_form_btn.text = "Show" if bool(_form_collapsed) else "Hide"
 
 func _on_connect_pressed() -> void:
 	_cleanup_transport()
@@ -149,6 +172,7 @@ func _on_transport_connected() -> void:
 	if _transport != null and _transport.has_method("get_session_id"):
 		sid = String(_transport.get_session_id())
 	status_label.text = "Status: connected (session=%s)" % sid
+	_set_form_collapsed(true)
 
 	var cols_rows := _compute_cols_rows_from_control()
 	if _transport != null and _transport.has_method("resize"):
