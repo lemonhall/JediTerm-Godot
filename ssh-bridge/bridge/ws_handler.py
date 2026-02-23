@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 import uuid
 
+import asyncssh
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
 from .config import BridgeConfig
 from .protocol import MsgType, decode_json_payload, decode_message, encode_data, encode_json, encode_ping
 from .ssh_session import SshSession, safe_cancel
+
+
+_log = logging.getLogger(__name__)
 
 
 async def _send_error(ws: WebSocket, message: str) -> None:
@@ -29,6 +34,8 @@ async def ws_endpoint(ws: WebSocket, cfg: BridgeConfig) -> None:
 
     last_activity = time.monotonic()
     connected_sent = False
+    close_code: int = 1000
+    close_reason: str = ""
 
     async def touch() -> None:
         nonlocal last_activity
@@ -65,17 +72,23 @@ async def ws_endpoint(ws: WebSocket, cfg: BridgeConfig) -> None:
     ssh_out_task: asyncio.Task | None = None
 
     try:
+        _log.info("ws connected (session_id=%s, client=%s)", session_id, ws.client)
+
         # First message must be CONNECT.
         raw = await ws.receive_bytes()
         await touch()
         msg = decode_message(raw)
         if int(msg.msg_type) != int(MsgType.CONNECT):
+            close_code = 1002
+            close_reason = "expected CONNECT as first message"
             await _send_error(ws, "expected CONNECT as first message")
             return
         payload = decode_json_payload(msg.payload)
 
         token = str(payload.get("token", "")).strip()
         if token != cfg.token:
+            close_code = 1008
+            close_reason = "invalid token"
             await _send_error(ws, "invalid token")
             return
 
@@ -86,30 +99,62 @@ async def ws_endpoint(ws: WebSocket, cfg: BridgeConfig) -> None:
         password = str(payload.get("password", "")).strip()
 
         if not host or not username:
+            close_code = 1008
+            close_reason = "missing host/user"
             await _send_error(ws, "missing host/user")
             return
         if port <= 0 or port > 65535:
+            close_code = 1008
+            close_reason = "invalid port"
             await _send_error(ws, "invalid port")
             return
         if not _is_host_allowed(cfg, host):
+            close_code = 1008
+            close_reason = "host not allowed"
             await _send_error(ws, "host not allowed")
             return
         if auth_type != "password":
+            close_code = 1008
+            close_reason = "unsupported auth_type"
             await _send_error(ws, "only password auth is supported in MVP")
             return
         if not password:
+            close_code = 1008
+            close_reason = "missing password"
             await _send_error(ws, "missing password")
             return
 
-        await ssh.connect(
+        _log.info(
+            "ssh connect requested (session_id=%s, host=%s, port=%s, user=%s)",
+            session_id,
             host,
             port,
             username,
-            password,
-            cols=80,
-            rows=24,
-            allow_unknown_hosts=cfg.allow_unknown_hosts,
         )
+        try:
+            await ssh.connect(
+                host,
+                port,
+                username,
+                password,
+                cols=80,
+                rows=24,
+                allow_unknown_hosts=cfg.allow_unknown_hosts,
+                strict_host_keys=cfg.strict_host_keys,
+            )
+        except asyncssh.misc.HostKeyNotVerifiable:
+            close_code = 1008
+            close_reason = "host key not trusted"
+            await _send_error(
+                ws,
+                "Host key verification failed; remove/accept it in known_hosts, or set BRIDGE_ALLOW_UNKNOWN_HOSTS=1 (not recommended).",
+            )
+            return
+        except Exception as exc:  # noqa: BLE001
+            close_code = 1011
+            close_reason = f"ssh connect failed: {type(exc).__name__}"
+            await _send_error(ws, f"SSH connect failed: {exc}")
+            return
 
         await ws.send_bytes(encode_json(MsgType.CONNECTED, {"session_id": session_id}))
         connected_sent = True
@@ -119,6 +164,7 @@ async def ws_endpoint(ws: WebSocket, cfg: BridgeConfig) -> None:
             try:
                 raw = await ws.receive_bytes()
             except WebSocketDisconnect:
+                _log.info("ws disconnected by client (session_id=%s)", session_id)
                 return
             await touch()
 
@@ -147,13 +193,17 @@ async def ws_endpoint(ws: WebSocket, cfg: BridgeConfig) -> None:
             await _send_error(ws, f"unknown msg_type: {t}")
 
     except WebSocketDisconnect:
+        _log.info("ws disconnected (session_id=%s)", session_id)
         return
     except Exception as exc:  # noqa: BLE001
+        close_code = 1011
+        close_reason = f"{type(exc).__name__}"
         if not connected_sent:
             try:
                 await _send_error(ws, str(exc))
             except Exception:  # noqa: BLE001
                 pass
+        _log.exception("ws handler crashed (session_id=%s)", session_id)
         return
     finally:
         await safe_cancel(watchdog_task)
@@ -161,7 +211,13 @@ async def ws_endpoint(ws: WebSocket, cfg: BridgeConfig) -> None:
             await safe_cancel(ssh_out_task)
         await ssh.close()
         try:
-            await ws.close(code=1000)
+            if close_reason:
+                _log.info(
+                    "ws closing (session_id=%s, code=%s, reason=%s)",
+                    session_id,
+                    close_code,
+                    close_reason,
+                )
+            await ws.close(code=int(close_code))
         except Exception:  # noqa: BLE001
             pass
-
