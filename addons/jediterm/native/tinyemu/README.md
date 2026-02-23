@@ -8,7 +8,14 @@
 
 - 源码：`addons/jediterm/native/tinyemu/src/`
 - `.gdextension`：`addons/jediterm/native/tinyemu/tinyemu.gdextension`
+- 第三方：`addons/jediterm/native/tinyemu/thirdparty/`
 - 输出（本地构建产物，不提交）：`addons/jediterm/bin/`
+
+## 来源与许可证（第三方）
+
+- TinyEMU 核心实现来自 git submodule：`addons/jediterm/native/tinyemu/thirdparty/riscv-emu/`
+- 上游仓库：`https://github.com/sysprog21/riscv-emu`
+- 许可证：MIT（以 submodule 内 `LICENSE` 为准）
 
 ## 构建（Windows 11 + PowerShell）
 
@@ -37,4 +44,3 @@ pwsh -NoProfile -File scripts\build_tinyemu_gdextension.ps1
 ```gdscript
 var vm = ClassDB.instantiate("TinyEmuVM")
 ```
-
