@@ -7,6 +7,7 @@
 #include <array>
 #include <atomic>
 #include <cstring>
+#include <mutex>
 #include <thread>
 #include <vector>
 
@@ -28,6 +29,8 @@ using namespace godot;
 ConPTY::ConPTY() {
 #if defined(_WIN32) && !defined(_CONPTY_DISABLED)
 	_stop_requested.store(false);
+	_pending_exit_code.store(-1);
+	_process_exited_flag.store(false);
 #endif
 }
 
@@ -40,9 +43,40 @@ void ConPTY::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("write", "data"), &ConPTY::write);
 	ClassDB::bind_method(D_METHOD("resize", "cols", "rows"), &ConPTY::resize);
 	ClassDB::bind_method(D_METHOD("close"), &ConPTY::close);
+	ClassDB::bind_method(D_METHOD("poll_data"), &ConPTY::poll_data);
 
 	ADD_SIGNAL(MethodInfo("data_received", PropertyInfo(Variant::PACKED_BYTE_ARRAY, "data")));
 	ADD_SIGNAL(MethodInfo("process_exited", PropertyInfo(Variant::INT, "exit_code")));
+}
+
+PackedByteArray ConPTY::poll_data() {
+#if !defined(_WIN32) || defined(_CONPTY_DISABLED)
+	return PackedByteArray();
+#else
+	PackedByteArray result;
+
+	{
+		std::lock_guard<std::mutex> lock(_buffer_mutex);
+		if (!_pending_buffer.empty()) {
+			result.resize((int)_pending_buffer.size());
+			memcpy(result.ptrw(), _pending_buffer.data(), _pending_buffer.size());
+			_pending_buffer.clear();
+		}
+	}
+
+	// Emit signal for backward compatibility (GDScript code that connects to data_received still works)
+	if (result.size() > 0) {
+		emit_signal("data_received", result);
+	}
+
+	// Check if process exited
+	if (_process_exited_flag.load()) {
+		_process_exited_flag.store(false);
+		emit_signal("process_exited", _pending_exit_code.load());
+	}
+
+	return result;
+#endif
 }
 
 int ConPTY::open(int cols, int rows, const String &command) {
@@ -196,6 +230,11 @@ int ConPTY::open(int cols, int rows, const String &command) {
 	_h_thread = pi.hThread;
 	_is_opened = true;
 
+	{
+		std::lock_guard<std::mutex> lock(_buffer_mutex);
+		_pending_buffer.clear();
+	}
+
 	_start_reader_thread();
 	return OK;
 #endif
@@ -311,13 +350,15 @@ void ConPTY::close() {
 #if defined(_WIN32) && !defined(_CONPTY_DISABLED)
 void ConPTY::_start_reader_thread() {
 	_stop_requested.store(false);
+	_process_exited_flag.store(false);
 	_reader_thread = new std::thread([this]() {
 		HANDLE h = (HANDLE)_h_out_read;
 		if (h == nullptr || h == INVALID_HANDLE_VALUE) {
 			return;
 		}
 
-		std::array<uint8_t, 4096> buf{};
+		// Larger buffer = fewer syscalls, fewer mutex locks
+		std::array<uint8_t, 32768> buf{};
 		while (!_stop_requested.load()) {
 			DWORD read = 0;
 			BOOL ok = ReadFile(h, buf.data(), (DWORD)buf.size(), &read, nullptr);
@@ -335,10 +376,10 @@ void ConPTY::_start_reader_thread() {
 				break;
 			}
 
-			PackedByteArray out;
-			out.resize((int)read);
-			memcpy(out.ptrw(), buf.data(), read);
-			_emit_data_received_deferred(out);
+			{
+				std::lock_guard<std::mutex> lock(_buffer_mutex);
+				_pending_buffer.insert(_pending_buffer.end(), buf.data(), buf.data() + read);
+			}
 		}
 
 		// Best-effort exit code.
@@ -349,7 +390,8 @@ void ConPTY::_start_reader_thread() {
 				exit_code = (int)code;
 			}
 		}
-		_emit_process_exited_deferred(exit_code);
+		_pending_exit_code.store(exit_code);
+		_process_exited_flag.store(true);
 	});
 }
 
@@ -371,13 +413,5 @@ void ConPTY::_stop_reader_thread() {
 		CloseHandle((HANDLE)_h_out_read);
 		_h_out_read = nullptr;
 	}
-}
-
-void ConPTY::_emit_data_received_deferred(const PackedByteArray &data) {
-	call_deferred("emit_signal", "data_received", data);
-}
-
-void ConPTY::_emit_process_exited_deferred(int exit_code) {
-	call_deferred("emit_signal", "process_exited", exit_code);
 }
 #endif

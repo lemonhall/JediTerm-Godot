@@ -28,6 +28,14 @@ func _ready() -> void:
 	_try_start_conpty()
 
 func _process(_delta: float) -> void:
+	# Poll PTY data every frame — no more call_deferred delay
+	if _pty != null and _pty.has_method("poll_data"):
+		var data: PackedByteArray = _pty.poll_data()
+		# poll_data() emits `data_received` for backward compatibility; to minimize latency,
+		# we process the returned bytes directly here.
+		if data.size() > 0 and _terminal != null and _terminal.has_method("processBytes"):
+			_terminal.processBytes(data)
+
 	var fps := int(Engine.get_frames_per_second())
 	var has_pty := (_pty != null)
 	info.text = "Render v3 ConPTY demo | FPS:%d | PTY:%s | Font:%s@%d" % [
@@ -105,8 +113,9 @@ func _try_start_conpty() -> void:
 	status.text = "ConPTY: OK (%s)" % String(shell_command)
 
 func _on_pty_data_received(data: PackedByteArray) -> void:
-	if _terminal != null and _terminal.has_method("processBytes"):
-		_terminal.processBytes(data)
+	# Data is now processed directly in _process() via poll_data().
+	# This callback is kept for backward compatibility but does nothing.
+	pass
 
 func _on_pty_process_exited(exit_code: int) -> void:
 	status.text = "ConPTY: process exited (%d)" % int(exit_code)

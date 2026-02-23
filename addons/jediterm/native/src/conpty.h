@@ -5,7 +5,9 @@
 #include <godot_cpp/variant/string.hpp>
 
 #include <atomic>
+#include <mutex>
 #include <thread>
+#include <vector>
 
 namespace godot {
 
@@ -20,6 +22,7 @@ public:
 	int write(const PackedByteArray &data);
 	int resize(int cols, int rows);
 	void close();
+	PackedByteArray poll_data();
 
 protected:
 	static void _bind_methods();
@@ -39,10 +42,14 @@ private:
 	std::thread *_reader_thread = nullptr;
 	std::atomic<bool> _stop_requested;
 
+	// Poll-mode buffer (replaces call_deferred signal emission)
+	std::mutex _buffer_mutex;
+	std::vector<uint8_t> _pending_buffer;
+	std::atomic<int> _pending_exit_code{-1};
+	std::atomic<bool> _process_exited_flag{false};
+
 	void _start_reader_thread();
 	void _stop_reader_thread();
-	void _emit_data_received_deferred(const PackedByteArray &data);
-	void _emit_process_exited_deferred(int exit_code);
 #endif
 };
 
