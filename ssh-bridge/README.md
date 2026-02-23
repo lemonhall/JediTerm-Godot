@@ -32,6 +32,7 @@ uv run uvicorn bridge.app:app --host 127.0.0.1 --port 8765
 - host key 策略：默认采用 TOFU（首次连接自动把目标主机的 host key 追加到 `~/.ssh/known_hosts`，后续按 known_hosts 校验）。
 - `BRIDGE_STRICT_HOST_KEYS`：`1` 表示严格要求 host key 已存在于 `~/.ssh/known_hosts`（不做自动写入）。
 - `BRIDGE_ALLOW_UNKNOWN_HOSTS`：`1` 表示跳过 SSH known_hosts 校验（不推荐；会忽略 host key 变更风险）。
+- `BRIDGE_FORCE_UTF8_LOCALE`：默认 `1`，启动远端 shell 时注入 `LANG/LC_CTYPE=en_US.UTF-8`（服务器可能忽略）。
 
 ## 协议
 

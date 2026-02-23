@@ -11,6 +11,7 @@ class BridgeConfig:
     idle_timeout_sec: int
     allow_unknown_hosts: bool
     strict_host_keys: bool
+    force_utf8_locale: bool
 
 
 def _parse_allow_hosts(value: str | None) -> set[str] | None:
@@ -30,6 +31,8 @@ def load_config_from_env() -> BridgeConfig:
     idle_timeout_sec = int(os.getenv("BRIDGE_IDLE_TIMEOUT_SEC", "1800"))
     allow_unknown_hosts = os.getenv("BRIDGE_ALLOW_UNKNOWN_HOSTS", "").strip() in ("1", "true", "TRUE", "yes", "YES")
     strict_host_keys = os.getenv("BRIDGE_STRICT_HOST_KEYS", "").strip() in ("1", "true", "TRUE", "yes", "YES")
+    # Default ON: most terminal sessions expect UTF-8 output for correct filenames/prompts.
+    force_utf8_locale = os.getenv("BRIDGE_FORCE_UTF8_LOCALE", "1").strip() in ("1", "true", "TRUE", "yes", "YES")
 
     return BridgeConfig(
         token=token,
@@ -37,4 +40,5 @@ def load_config_from_env() -> BridgeConfig:
         idle_timeout_sec=idle_timeout_sec,
         allow_unknown_hosts=allow_unknown_hosts,
         strict_host_keys=strict_host_keys,
+        force_utf8_locale=force_utf8_locale,
     )

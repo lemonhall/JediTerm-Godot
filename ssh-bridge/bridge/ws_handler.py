@@ -59,9 +59,12 @@ async def ws_endpoint(ws: WebSocket, cfg: BridgeConfig) -> None:
         if not ssh.proc:
             return
         try:
-            async for chunk in ssh.proc.stdout:
+            # NOTE: async iteration yields "lines" (readline) which delays local echo until newline.
+            # Read raw bytes to forward keystroke echo & cursor updates immediately.
+            while True:
+                chunk = await ssh.proc.stdout.read(4096)
                 if not chunk:
-                    continue
+                    return
                 await touch()
                 await ws.send_bytes(encode_data(bytes(chunk)))
         except Exception:  # noqa: BLE001
@@ -141,6 +144,7 @@ async def ws_endpoint(ws: WebSocket, cfg: BridgeConfig) -> None:
                 rows=24,
                 allow_unknown_hosts=cfg.allow_unknown_hosts,
                 strict_host_keys=cfg.strict_host_keys,
+                force_utf8_locale=cfg.force_utf8_locale,
             )
         except asyncssh.misc.HostKeyNotVerifiable:
             close_code = 1008

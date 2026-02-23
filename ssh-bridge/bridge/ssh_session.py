@@ -69,6 +69,7 @@ class SshSession:
         rows: int = 24,
         allow_unknown_hosts: bool = False,
         strict_host_keys: bool = False,
+        force_utf8_locale: bool = True,
     ) -> None:
         known_hosts: str | None
         known_hosts_path = self._known_hosts_path()
@@ -140,11 +141,18 @@ class SshSession:
                 known_hosts=known_hosts_path,
             )
 
+        env: dict[str, str] | None = None
+        if force_utf8_locale:
+            # Best-effort: ensure a UTF-8 locale so server-side programs (ls/zsh, etc.)
+            # output non-ASCII correctly. Server may ignore these variables.
+            env = {"LANG": "en_US.UTF-8", "LC_CTYPE": "en_US.UTF-8"}
+
         self.proc = await self.conn.create_process(
             term_type="xterm-256color",
             term_size=(cols, rows),
             encoding=None,
             stderr=asyncssh.STDOUT,
+            env=env,
         )
 
     async def write(self, data: bytes) -> None:
