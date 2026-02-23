@@ -12,18 +12,42 @@
 
 ## 前置：当前仓库状态（已存在的骨架）
 
-已落地（可编译/可运行 stub）：
+已落地（可编译；stub 可运行；VM 启动路径 WIP）：
 - TinyEMU 扩展骨架：`addons/jediterm/native/tinyemu/`
 - 构建脚本：`scripts/build_tinyemu_gdextension.ps1`
 - demo 场景（stub：输入回显，未启动 Linux）：`scenes/render_v5_tinyemu_demo.tscn`
 
 关键行为：
-- `TinyEmuVM` 已提供 ConPTY 风格别名：`open/write/resize/close/poll_data`
+- `TinyEmuVM` 已提供 ConPTY 风格别名：`open/write/resize/close/poll_data`（其中 `open()` 当前为 stub echo loop，用于验证字节流闭环）
+- `TinyEmuVM` 已额外提供 `open_from_images()/create_from_images()`：需要 `bios+kernel+initrd`，会启动 TinyEMU VM，并把 VirtIO Console 字节流接到 ring buffer（WIP）
 - `scripts/run_godot_tests.ps1` 默认会临时禁用 `.godot/extension_list.cfg`，避免本机扩展启用导致 headless 用例不稳定；需要扩展测试时显式加 `-EnableGdExtensions`
 
 ---
 
+## Progress Checklist（基于 2026-02-23 仓库现状）
+
+- [x] Task 1（submodule）：已完成（`.gitmodules` + `addons/jediterm/native/tinyemu/thirdparty/riscv-emu/`）
+- [x] Task 2（SCons 编译最小 C 源）：已完成（`addons/jediterm/native/tinyemu/SConstruct`；`pwsh -NoProfile -File scripts/build_tinyemu_gdextension.ps1 -DebugOnly` 可过）
+- [~] Task 3（VirtIO Console ↔ ring buffer）：已部分完成
+  - [x] console 回调：`CharacterDevice.write_data/read_data` ↔ `_out/_in`
+  - [x] VM 启动路径：`create_from_images/open_from_images`（需要 `bios+kernel+initrd`）
+  - [ ] demo 仍走 `open()` stub（不 boot Linux）
+  - [ ] `rootfs_path` 尚未接入（virtio-blk / `/dev/vda` 路线未落地）
+- [ ] Task 4（WSL2 Buildroot 脚本）：未完成（`scripts/build_tinyemu_buildroot_wsl.ps1` 不存在）
+- [ ] Task 5（demo boot 到 shell）：未完成（`scenes/render_v5_tinyemu_demo.gd` 未用 `open_from_images()`，也未 `globalize_path`）
+- [ ] Task 6（可选集成测试）：未完成（`tests/addons/native/test_tinyemu_vm_available.gd` 不存在）
+- [~] Task 7（文档交付）：部分完成（本计划/交接/README 已有；PRD 仍缺“当前验证闭环命令”）
+
+**Next（必须让人一眼知道先干啥）**
+1. 先写 `scripts/build_tinyemu_buildroot_wsl.ps1` 产出 `bios(OpenSBI)+kernel+initrd` 三件套（不入库，输出到 `addons/jediterm/native/tinyemu/images/out/`）
+2. 再改 `scenes/render_v5_tinyemu_demo.gd`：`ProjectSettings.globalize_path()` + `open_from_images(...)`，把 demo 从 stub 变成能进 shell
+3. 最后再决定 `rootfs_path` 路线：virtio-blk(/dev/vda) 还是 initrd-only（Phase 1 建议先 initrd-only，等跑通再加 block）
+
+---
+
 ## Task 1: 引入 TinyEMU 源码（submodule）
+
+**Status:** DONE（已在主分支落地）
 
 **Files:**
 - Create: `addons/jediterm/native/tinyemu/thirdparty/`（目录）
@@ -53,6 +77,8 @@ git commit -m "chore(tinyemu): add riscv-emu submodule"
 ---
 
 ## Task 2: 让 SCons 能编译 TinyEMU 的最小 C 源集合
+
+**Status:** DONE（Windows/MSVC 下可编译链接）
 
 **Files:**
 - Modify: `addons/jediterm/native/tinyemu/SConstruct:1`
@@ -105,19 +131,18 @@ git commit -m "build(tinyemu): compile minimal riscv-emu sources"
 
 ## Task 3: 把 TinyEMU 的 VirtIO Console 字节流接到 ring buffer
 
+**Status:** PARTIAL（console 回调+VM 启动路径已接；demo 仍 stub；rootfs 未接）
+
 **Files:**
 - Modify: `addons/jediterm/native/tinyemu/src/tinyemu_vm.cpp:1`
 - Modify: `addons/jediterm/native/tinyemu/src/tinyemu_vm.h:1`
 - (Optional) Create: `addons/jediterm/native/tinyemu/src/tinyemu_glue.cpp`
 
-**Step 1: 去掉 stub echo loop**
+**Step 1: 明确两条路径（避免“以为 open() 就能 boot”）**
 
-目标：`_worker_main()` 里不再“in → out”回显，而是：
-- 初始化 TinyEMU VM
-- 注册 VirtIO Console 的 `CharacterDevice`（或等价接口）
-- 在模拟循环里：
-  - 当 TinyEMU 需要 stdin：从 `_in` pop
-  - 当 Linux 输出到 console：push 到 `_out`
+目标：
+- `open()`（ConPTY-like）允许保留 stub echo loop，用于验证扩展加载 + TerminalControl 字节流闭环（稳定、可测）
+- `open_from_images()/create_from_images()` 走真正 VM 启动：初始化 TinyEMU VM + 注册 VirtIO Console 的 `CharacterDevice` + 在模拟循环里读写 `_in/_out`
 
 **Step 2: 约定回调签名与线程边界**
 
@@ -125,12 +150,13 @@ git commit -m "build(tinyemu): compile minimal riscv-emu sources"
 - 回调里只做 ring buffer push/pop + 轻量数据复制
 - 不在工作线程触碰 Godot scene tree
 - 主线程通过 `poll_data()` 获取输出（可保留 `data_received` 信号兼容，但不要依赖它做逻辑）
+- `rootfs_path` 若 Phase 1 不做 virtio-blk，要在文档里写死“Phase 1 initrd-only”，避免误解
 
 **Step 3: 用“纯文本 banner”做第一阶段集成验证**
 
-在 TinyEMU 启动成功后，先不强依赖 rootfs：
-- 成功初始化后向 `_out` 写入一行固定 banner（例如 `"[TinyEmuVM] booting...\r\n"`）
-- demo 场景应能显示该行（证明 TinyEMU 工作线程跑起来、并且输出链路没断）
+在不依赖 buildroot 产物的情况下，先证明“扩展运行 + 字节流闭环”：
+- `open()`（stub）应输出固定 banner，并能回显输入
+- `open_from_images()`（VM）在成功初始化后应输出固定 banner（例如 `"[TinyEmuVM] VM started\r\n"`）
 
 **Step 4: Commit**
 
@@ -155,7 +181,11 @@ git commit -m "feat(tinyemu): wire virtio console to ring buffers"
 - `wsl -e bash -lc '...'` 进入 Ubuntu 24
 - 检查依赖（`make`, `gcc`, `g++`, `bison`, `flex`, `bc`, `libncurses-dev`, `python3`, `rsync` 等）
 - 拉取 buildroot（建议也用 submodule 或固定 tag 的浅克隆到 `scripts/_wsl/`，按你们仓库偏好）
-- 配置 `riscv64` 最小系统 + VirtIO console（`hvc0`）+ ext2 rootfs
+- 配置 `riscv64` 最小系统 + VirtIO console（`hvc0`）
+- 产出 **VM 启动必需的三件套**（供 `open_from_images()` 使用）：
+  - `bios`：OpenSBI（或等价 firmware，供 `VM_FILE_BIOS`）
+  - `kernel`：Linux 内核（供 `VM_FILE_KERNEL`）
+  - `initrd`：最小 rootfs（供 `VM_FILE_INITRD`）
 - 输出到 Windows 路径（例如 `addons/jediterm/native/tinyemu/images/out/`），但**不要**把二进制镜像加入 git
 
 命令示例（计划里写清楚实际输出路径）：
@@ -182,15 +212,15 @@ git commit -m "build(tinyemu): add WSL2 buildroot image script (no binaries)"
 **Step 1: 使用 `ProjectSettings.globalize_path()` 传真实文件路径**
 
 GDExtension 不应直接接 `res://`，demo 场景里改为：
-- 若 `kernel_path`/`rootfs_path` 为空，则使用默认 `res://addons/jediterm/native/tinyemu/images/out/...`
-- 用 `ProjectSettings.globalize_path("res://...")` 转为 OS 路径后传入 `TinyEmuVM.open(...)`
+- 若 `bios/kernel/initrd` 为空，则使用默认 `res://addons/jediterm/native/tinyemu/images/out/...`
+- 用 `ProjectSettings.globalize_path("res://...")` 转为 OS 路径后传入 `TinyEmuVM.open_from_images(...)`
 
 **Step 2: 在 TinyEmuVM 里加载 kernel/rootfs 并 boot**
 
 按照 TinyEMU 机型接口，把 kernel/rootfs 挂到 virt machine（具体 API 依 submodule 实现）：
 - kernel：ELF 或 Image（按 TinyEMU 支持格式）
-- rootfs：virtio-blk（`/dev/vda`）或 initramfs（取决于你选的 buildroot 输出）
-- cmdline：`console=hvc0 root=/dev/vda rw`（或对应 initramfs）
+- Phase 1 推荐先走 initrd（`VM_FILE_INITRD`），cmdline 至少保证 `console=hvc0`
+- 如需做 rootfs（virtio-blk，`/dev/vda`）：再实现 `root=/dev/vda rw`，并把 `rootfs_path` 接入
 
 **Step 3: 端到端验收**
 
@@ -217,7 +247,8 @@ git commit -m "feat(tinyemu): boot linux in demo scene"
 
 用例逻辑：
 - 如果 `ClassDB.class_exists("TinyEmuVM")` 为 false：打印 `SKIP` 并 PASS（默认 suite 稳定）
-- 如果为 true：instantiate → open（stub 或真实）→ poll_data 能读到非空 banner → close
+- 如果为 true：instantiate → `open()`（stub）→ `poll_data()` 能读到非空 banner → close
+  - 备注：不要依赖 buildroot 产物存在，否则 CI/新机器不稳定；真正 boot 用手动 demo 验收
 
 **Step 2: 跑测试（禁用扩展 / 启用扩展各一次）**
 
@@ -269,4 +300,3 @@ Plan complete and saved to `docs/plans/2026-02-23-tinyemu-gdextension.md`. Two e
 1) Parallel Session (separate) — 新开 session，用 superpowers:executing-plans 逐 task 落地（推荐）
 
 2) Subagent-Driven (this session) — 用 superpowers:subagent-driven-development 分 task 派发子 agent
-
