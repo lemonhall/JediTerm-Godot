@@ -3,22 +3,65 @@
 import os
 
 # Reuse the repo-level godot-cpp checkout under addons/jediterm/native/thirdparty/godot-cpp/
-env = SConscript("../thirdparty/godot-cpp/SConstruct")
-env["ENV"] = os.environ
+base_env = SConscript("../thirdparty/godot-cpp/SConstruct")
+base_env["ENV"] = os.environ
 
 VariantDir("build", "src", duplicate=0)
-env["OBJPREFIX"] = os.path.join("build", "")
+base_env["OBJPREFIX"] = os.path.join("build", "")
+
+ext_env = base_env.Clone()
+riscv_env = base_env.Clone()
+
+riscv_emu_dir = os.path.join("thirdparty", "riscv-emu")
+win_compat_dir = os.path.join("thirdparty", "win_compat")
+
+VariantDir(os.path.join("build", "riscv_emu"), riscv_emu_dir, duplicate=0)
+riscv_emu_src_dir = os.path.join("build", "riscv_emu")
+
+ext_env.Append(CPPPATH=[riscv_emu_dir, win_compat_dir])
+riscv_env.Append(CPPPATH=[riscv_emu_dir, win_compat_dir])
 
 sources = Glob("src/*.cpp")
 
-if env["platform"] == "windows":
-	# Keep consistent with godot-cpp CRT choice (/MD).
-	env.Append(LIBS=["User32", "Advapi32", "Ole32", "Shell32"])
+tinyemu_core_sources = [
+	os.path.join(riscv_emu_src_dir, "cutils.c"),
+	os.path.join(riscv_emu_src_dir, "iomem.c"),
+	os.path.join(riscv_emu_src_dir, "pci.c"),
+	os.path.join(riscv_emu_src_dir, "virtio.c"),
+	os.path.join(riscv_emu_src_dir, "elf.c"),
+	os.path.join(riscv_emu_src_dir, "simplefb.c"),
+	os.path.join(riscv_emu_src_dir, "softfp.c"),
+	os.path.join(riscv_emu_src_dir, "riscv_machine.c"),
+]
 
-library = env.SharedLibrary(
-	"../../bin/win64/tinyemu{}{}".format(env["suffix"], env["SHLIBSUFFIX"]),
+tinyemu_core_objects = [riscv_env.Object(source=s) for s in tinyemu_core_sources]
+sources += tinyemu_core_objects
+
+if ext_env["platform"] == "windows":
+	# Keep consistent with godot-cpp CRT choice (/MD).
+	ext_env.Append(LIBS=["User32", "Advapi32", "Ole32", "Shell32"])
+
+	# MSVC/Windows compatibility shims for upstream C sources (do NOT leak into godot-cpp build).
+	compat_header = os.path.abspath(os.path.join(win_compat_dir, "tinyemu_msvc_compat.h"))
+	riscv_env.Append(CCFLAGS=["/FI" + compat_header])
+	# Mirror upstream Makefile defaults for riscv64 builds.
+	riscv_env.Replace(CPPDEFINES=["MAX_XLEN=64", "CONFIG_RISCV_MAX_XLEN=64"])
+
+	# riscv_cpu.c is compiled once per MAX_XLEN upstream (32/64/128). We only need 32+64.
+	riscv_env32 = riscv_env.Clone()
+	riscv_env32.Replace(CPPDEFINES=["MAX_XLEN=32", "CONFIG_RISCV_MAX_XLEN=64"])
+
+	riscv_cpu_src = os.path.join(riscv_emu_src_dir, "riscv_cpu.c")
+	riscv_cpu32_target = os.path.join("build", "riscv_emu", "build", "riscv_cpu32")
+	riscv_cpu64_target = os.path.join("build", "riscv_emu", "build", "riscv_cpu64")
+	sources += [
+		riscv_env32.Object(target=riscv_cpu32_target, source=riscv_cpu_src),
+		riscv_env.Object(target=riscv_cpu64_target, source=riscv_cpu_src),
+	]
+
+library = ext_env.SharedLibrary(
+	"../../bin/win64/tinyemu{}{}".format(ext_env["suffix"], ext_env["SHLIBSUFFIX"]),
 	source=sources,
 )
 
 Default(library)
-
