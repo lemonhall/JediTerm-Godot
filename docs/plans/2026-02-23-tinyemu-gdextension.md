@@ -1,5 +1,7 @@
 # TinyEMU GDExtension Implementation Plan
 
+（2026-02-24 更新：旧脚本 `scripts/build_tinyemu_buildroot_wsl.ps1` 已移除；ROM 构建请使用 `scripts/tinyemu/` 三阶段脚本。）
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** 在 Godot 4.6（JediTerm-Godot）里新增 TinyEMU 后端：进程内启动一个最小 RISC-V Linux，并把 VirtIO Console 字节流接入现有 `TerminalControl`/`JediTerminal`。
