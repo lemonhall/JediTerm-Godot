@@ -587,7 +587,7 @@ void TinyEmuVM::_worker_main() {
 	p.vmc = &riscv_machine_class;
 	p.machine_name = dup_cstr("riscv64");
 	p.ram_size = static_cast<uint64_t>(_ram_mb) << 20;
-	p.rtc_real_time = true;
+	p.rtc_real_time = false;
         p.console = &_console_dev_storage;
 	if (net_dev != nullptr) {
 		p.eth_count = 1;

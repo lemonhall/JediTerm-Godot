@@ -2766,3 +2766,949 @@ cp output/images/fw_payload.bin /mnt/e/development/JediTerm-Godot/addons/jediter
 
 内核的当前输出
 
+卡在 `sched_clock` 之后了。下一步通常是中断控制器（PLIC）和定时器初始化。需要知道具体卡在哪一行。
+
+加 `initcall_debug` 和更高日志级别到命令行，让内核告诉我们它死在哪：
+
+```bash
+cd ~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1/output/build/linux-6.12.20
+sed -i 's/CONFIG_CMDLINE=.*/CONFIG_CMDLINE="earlycon=sbi console=hvc0 root=\/dev\/vda rw loglevel=8 initcall_debug"/' .config
+grep "CONFIG_CMDLINE" .config
+```
+
+确认无误后重编：
+
+```bash
+cd ~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+make linux-rebuild -j$(nproc) && make opensbi-rebuild -j$(nproc)
+cp output/images/fw_payload.bin /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/images/python/
+```
+
+跑完把新的输出贴给我，应该能看到卡在哪个 initcall 上。
+
+[    0.000000] Linux version 6.12.20 (lemonhall@LEMON-HP-LAPTOP) (riscv64-buildroot-linux-gnu-gcc.br_real (Buildroot 2025.02.1) 13.3.0, GNU ld (GNU Binutils) 2.43.1) #4 Tue Feb 24 21:32:57 CST 2026
+[    0.000000] Machine model: ucbbar,riscvemu-bare
+[    0.000000] Forcing kernel command line to: earlycon=sbi console=hvc0 root=/dev/vda rw loglevel=8 initcall_debug
+[    0.000000] SBI specification v2.0 detected
+[    0.000000] SBI implementation ID=0x1 Version=0x10006
+[    0.000000] SBI TIME extension detected
+[    0.000000] SBI IPI extension detected
+[    0.000000] SBI RFENCE extension detected
+[    0.000000] SBI SRST extension detected
+[    0.000000] SBI DBCN extension detected
+[    0.000000] earlycon: sbi0 at I/O port 0x0 (options '')
+[    0.000000] printk: legacy bootconsole [sbi0] enabled
+[    0.000000] efi: UEFI not found.
+[    0.000000] OF: reserved mem: Reserved memory: No reserved-memory node in the DT
+[    0.000000] Zone ranges:
+[    0.000000]   DMA32    [mem 0x0000000080000000-0x000000008fffffff]
+[    0.000000]   Normal   empty
+[    0.000000] Movable zone start for each node
+[    0.000000] Early memory node ranges
+[    0.000000]   node   0: [mem 0x0000000080000000-0x000000008fffffff]
+[    0.000000] Initmem setup node 0 [mem 0x0000000080000000-0x000000008fffffff]
+[    0.000000] Falling back to deprecated "riscv,isa"
+[    0.000000] riscv: base ISA extensions acdfim
+[    0.000000] riscv: ELF capabilities acdfim
+[    0.000000] pcpu-alloc: s0 r0 d32768 u32768 alloc=1*32768
+[    0.000000] pcpu-alloc: [0] 0 
+[    0.000000] Kernel command line: earlycon=sbi console=hvc0 root=/dev/vda rw loglevel=8 initcall_debug
+[    0.000000] Dentry cache hash table entries: 32768 (order: 6, 262144 bytes, linear)
+[    0.000000] Inode-cache hash table entries: 16384 (order: 5, 131072 bytes, linear)
+[    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 65536
+[    0.000000] mem auto-init: stack:all(zero), heap alloc:off, heap free:off
+[    0.000000] SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=1, Nodes=1
+[    0.000000] NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0
+[    0.000000] riscv-intc: 64 local interrupts mapped
+[    0.000000] clocksource: riscv_clocksource: mask: 0xffffffffffffffff max_cycles: 0x24e6a1710, max_idle_ns: 440795202120 ns
+[    0.000035] sched_clock: 64 bits at 10MHz, resolution 100ns, wraps every 4398046511100ns
+
+
+
+输出和之前完全一样，`initcall_debug` 没有产生任何额外输出。这说明内核卡在 initcall 阶段之前，就在 `sched_clock` 之后的某个早期函数里。
+
+需要定位具体卡在哪个函数。跑这几条：
+
+```bash
+# 1. 看 start_kernel 里 sched_clock 之后的调用顺序
+grep -n "sched_clock\|calibrate_delay\|time_init\|init_IRQ\|console_init\|timekeeping_init\|hrtimers_init" ~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1/output/build/linux-6.12.20/init/main.c | head -20
+```
+
+```bash
+# 2. 看 RISC-V 的 time_init 做了什么
+cat ~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1/output/build/linux-6.12.20/arch/riscv/kernel/time.c
+```
+
+```bash
+# 3. 看 FDT 里 PLIC 怎么描述的
+grep -n -A5 "plic\|interrupt-controller" /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_machine.c | head -40
+```
+
+```bash
+# 4. 看 calibrate_delay 是否需要 timer 中断
+grep -n "calibrate_delay\|lpj\|loops_per_jiffy" ~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1/output/build/linux-6.12.20/init/main.c | head -10
+```
+
+贴结果给我，我来判断卡在哪。
+
+
+lemonhall@LEMON-HP-LAPTOP:~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1$ # 1. 看 calibrate_delay 是否检查 lpj_fine
+grep -n "lpj_fine\|preset_lpj\|calibrate_delay" ~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1/output/build/linux-6.12.20/init/calibrate.c | head -20
+15:unsigned long lpj_fine;
+16:unsigned long preset_lpj;
+19:     preset_lpj = simple_strtoul(str,NULL,0);
+35:static unsigned long calibrate_delay_direct(void)
+99:                     printk(KERN_NOTICE "calibrate_delay_direct() ignoring "
+138:                    printk(KERN_NOTICE "calibrate_delay_direct() dropping "
+144:                    printk(KERN_NOTICE "calibrate_delay_direct() dropping "
+164:    printk(KERN_NOTICE "calibrate_delay_direct() failed to get a good "
+170:static unsigned long calibrate_delay_direct(void)
+187:static unsigned long calibrate_delay_converge(void)
+261:unsigned long __attribute__((weak)) calibrate_delay_is_known(void)
+275:void calibrate_delay(void)
+286:    } else if (preset_lpj) {
+287:            lpj = preset_lpj;
+291:    } else if ((!printed) && lpj_fine) {
+292:            lpj = lpj_fine;
+295:    } else if ((lpj = calibrate_delay_is_known())) {
+297:    } else if ((lpj = calibrate_delay_direct()) != 0) {
+304:            lpj = calibrate_delay_converge();
+lemonhall@LEMON-HP-LAPTOP:~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1$ # 2. 看 RISC-V timer 驱动（timer_probe 会调用的）
+grep -rn "TIMER_OF_DECLARE\|riscv_timer\|timer-riscv" ~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1/output/build/linux-6.12.20/drivers/clocksource/timer-riscv.c | head -10
+26:#include <clocksource/timer-riscv.h>
+33:static bool riscv_timer_cannot_wake_cpu;
+72:     .name                   = "riscv_timer_clockevent",
+107:static int riscv_timer_starting_cpu(unsigned int cpu)
+116:    if (riscv_timer_cannot_wake_cpu)
+127:static int riscv_timer_dying_cpu(unsigned int cpu)
+141:static irqreturn_t riscv_timer_interrupt(int irq, void *dev_id)
+151:static int __init riscv_timer_init_common(void)
+179:                                riscv_timer_interrupt,
+193:                     riscv_timer_starting_cpu, riscv_timer_dying_cpu);
+lemonhall@LEMON-HP-LAPTOP:~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1$
+lemonhall@LEMON-HP-LAPTOP:~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1$ # 3. 看 TinyEMU FDT 里 CLINT/timer 怎么描述的
+grep -n -A10 "clint\|timer" /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_machine.c | head -40
+198:static uint32_t clint_read(void *opaque, uint32_t offset, int size_log2)
+199-{
+200-    RISCVMachine *m = opaque;
+201-    uint32_t val;
+202-
+203-    assert(size_log2 == 2);
+204-    switch(offset) {
+205-    case 0xbff8:
+206-        val = rtc_get_time(m);
+207-        break;
+208-    case 0xbffc:
+--
+224:static void clint_write(void *opaque, uint32_t offset, uint32_t val,
+225-                      int size_log2)
+226-{
+227-    RISCVMachine *m = opaque;
+228-
+229-    assert(size_log2 == 2);
+230-    switch(offset) {
+231-    case 0x4000:
+232-        m->timecmp = (m->timecmp & ~0xffffffff) | val;
+233-        riscv_cpu_reset_mip(m->cpu_state, MIP_MTIP);
+234-        break;
+--
+678:    fdt_begin_node_num(s, "clint", CLINT_BASE_ADDR);
+679:    fdt_prop_str(s, "compatible", "riscv,clint0");
+680-
+681-    tab[0] = intc_phandle;
+682-    tab[1] = 3; /* M IPI irq */
+683-    tab[2] = intc_phandle;
+684:    tab[3] = 7; /* M timer irq */
+685-    fdt_prop_tab_u32(s, "interrupts-extended", tab, 4);
+686-
+687-    fdt_prop_tab_u64_2(s, "reg", CLINT_BASE_ADDR, CLINT_SIZE);
+688-
+689:    fdt_end_node(s); /* clint */
+690-
+691-    fdt_begin_node_num(s, "plic", PLIC_BASE_ADDR);
+692-    fdt_prop_u32(s, "#interrupt-cells", 1);
+693-    fdt_prop(s, "interrupt-controller", NULL, 0);
+lemonhall@LEMON-HP-LAPTOP:~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1$
+lemonhall@LEMON-HP-LAPTOP:~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1$ # 4. 看内核 CONFIG 里 timer 相关配置
+grep -i "RISCV_TIMER\|CLINT\|TIMER_RISCV\|CLOCKSOURCE" ~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1/output/build/linux-6.12.20/.config | head -10
+CONFIG_RISCV_TIMER=y
+lemonhall@LEMON-HP-LAPTOP:~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1$
+lemonhall@LEMON-HP-LAPTOP:~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1$
+
+
+
+没有任何 DEBUG 出现。这说明内核卡在 `time_init()` 内部，根本没走出来。
+
+`sched_clock` 消息是 `riscv_timer_init_common()` 里 `sched_clock_register()` 打印的。之后还有三步：
+
+1. `request_percpu_irq()` — 注册 timer 中断
+2. sstc 检查
+3. `cpuhp_setup_state()` → `riscv_timer_starting_cpu()` — 启动定时器
+
+继续缩小范围：
+
+```bash
+cd ~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1/output/build/linux-6.12.20
+
+# 在 sched_clock_register 之后、request_percpu_irq 之前插标记
+sed -i '/sched_clock_register(riscv_sched_clock/a\\tpr_err("DEBUG: after sched_clock_register\\n");' drivers/clocksource/timer-riscv.c
+
+# 在 request_percpu_irq 之后插标记
+sed -i '/request_percpu_irq(riscv_clock_event_irq/a\\tpr_err("DEBUG: after request_percpu_irq\\n");' drivers/clocksource/timer-riscv.c
+
+# 在 cpuhp_setup_state 之前插标记
+sed -i '/cpuhp_setup_state(CPUHP_AP_RISCV_TIMER_STARTING/i\\tpr_err("DEBUG: before cpuhp_setup_state\\n");' drivers/clocksource/timer-riscv.c
+
+# 验证
+grep -n "DEBUG\|sched_clock_register\|request_percpu_irq\|cpuhp_setup_state" drivers/clocksource/timer-riscv.c | head -15
+```
+
+确认无误后：
+
+```bash
+cd ~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+make linux-rebuild -j$(nproc) && make opensbi-rebuild -j$(nproc)
+cp output/images/fw_payload.bin /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/images/python/
+```
+
+
+
+[    0.000000]   DMA32    [mem 0x0000000080000000-0x000000008fffffff]
+[    0.000000]   Normal   empty
+[    0.000000] Movable zone start for each node
+[    0.000000] Early memory node ranges
+[    0.000000]   node   0: [mem 0x0000000080000000-0x000000008fffffff]
+[    0.000000] Initmem setup node 0 [mem 0x0000000080000000-0x000000008fffffff]
+[    0.000000] Falling back to deprecated "riscv,isa"
+[    0.000000] riscv: base ISA extensions acdfim
+[    0.000000] riscv: ELF capabilities acdfim
+[    0.000000] pcpu-alloc: s0 r0 d32768 u32768 alloc=1*32768
+[    0.000000] pcpu-alloc: [0] 0 
+[    0.000000] Kernel command line: earlycon=sbi console=hvc0 root=/dev/vda rw loglevel=8 initcall_debug
+[    0.000000] Dentry cache hash table entries: 32768 (order: 6, 262144 bytes, linear)
+[    0.000000] Inode-cache hash table entries: 16384 (order: 5, 131072 bytes, linear)
+[    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 65536
+[    0.000000] mem auto-init: stack:all(zero), heap alloc:off, heap free:off
+[    0.000000] SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=1, Nodes=1
+[    0.000000] NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0
+[    0.000000] riscv-intc: 64 local interrupts mapped
+[    0.000000] clocksource: riscv_clocksource: mask: 0xffffffffffffffff max_cycles: 0x24e6a1710, max_idle_ns: 440795202120 ns
+[    0.000035] sched_clock: 64 bits at 10MHz, resolution 100ns, wraps every 4398046511100ns
+[    0.001769] riscv-timer: DEBUG: after sched_clock_register
+[    0.003012] riscv-timer: DEBUG: after request_percpu_irq
+[    0.004145] riscv-timer: DEBUG: before cpuhp_setup_state
+
+
+卡在 `cpuhp_setup_state()` 里了。这个函数会调用 `riscv_timer_starting_cpu()` 来启动定时器。需要进一步定位：
+
+```bash
+cd ~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1/output/build/linux-6.12.20
+
+# 看 riscv_timer_starting_cpu 的完整实现
+sed -n '107,135p' drivers/clocksource/timer-riscv.c
+```
+
+```bash
+# 同时看看 riscv_clock_next_event（set_next_event 回调）
+grep -n -B2 -A15 "riscv_clock_next_event\|set_next_event" drivers/clocksource/timer-riscv.c | head -30
+```
+
+然后在 `riscv_timer_starting_cpu` 里插标记：
+
+```bash
+# 在 clockevents_config_and_register 前后插标记
+sed -i '/clockevents_config_and_register/i\\tpr_err("riscv-timer: DEBUG: before clockevents_config_and_register\\n");' drivers/clocksource/timer-riscv.c
+
+sed -i '/enable_percpu_irq/i\\tpr_err("riscv-timer: DEBUG: after clockevents_config_and_register\\n");' drivers/clocksource/timer-riscv.c
+
+sed -i '/enable_percpu_irq.*riscv_clock_event_irq/a\\tpr_err("riscv-timer: DEBUG: after enable_percpu_irq\\n");' drivers/clocksource/timer-riscv.c
+
+# 验证
+sed -n '107,135p' drivers/clocksource/timer-riscv.c
+```
+
+贴结果确认后再编译。
+
+好，代码很清晰了。`riscv_timer_starting_cpu()` 本身看起来不该阻塞——它只是配置 + 注册 + 使能中断。但 `cpuhp_setup_state()` 内部可能有额外逻辑。
+
+直接在 `riscv_timer_starting_cpu` 里插标记定位：
+
+```bash
+cd ~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1/output/build/linux-6.12.20
+
+# 在函数入口插
+sed -i '/static int riscv_timer_starting_cpu/,/riscv_clock_event_stop/{
+  /riscv_clock_event_stop/a\\tpr_err("DEBUG: timer_starting_cpu: after stop\\n");
+}' drivers/clocksource/timer-riscv.c
+
+# 在 clockevents_config_and_register 前后插
+sed -i '/clockevents_config_and_register(ce, riscv_timebase/i\\tpr_err("DEBUG: timer_starting_cpu: before clockevents_register\\n");' drivers/clocksource/timer-riscv.c
+
+sed -i '/clockevents_config_and_register(ce, riscv_timebase/a\\tpr_err("DEBUG: timer_starting_cpu: after clockevents_register\\n");' drivers/clocksource/timer-riscv.c
+
+# 在 enable_percpu_irq 前插
+sed -i '/enable_percpu_irq(riscv_clock_event_irq/i\\tpr_err("DEBUG: timer_starting_cpu: before enable_percpu_irq\\n");' drivers/clocksource/timer-riscv.c
+
+# 验证
+sed -n '107,140p' drivers/clocksource/timer-riscv.c
+```
+
+贴结果确认后编译。同时我也想看看 TinyEMU 的 timer 比较逻辑：
+
+```bash
+# 看 TinyEMU 怎么检查 mtime >= mtimecmp 并触发中断的
+grep -n -B3 -A10 "timecmp\|MIP_MTIP\|timer" /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_cpu.c | head -60
+```
+
+两个一起跑，贴结果给我。
+
+
+好，timer 逻辑清楚了。TinyEMU 的流程是：
+
+1. 主循环检查 `mtime >= mtimecmp` → 设 `MIP_MTIP`（M-mode timer pending）
+2. OpenSBI 捕获 M-mode timer 中断 → 设 `MIP_STIP`（S-mode timer pending）→ 返回 S-mode
+3. 内核收到 S-mode timer 中断
+
+这条链路看起来是对的。先看 DEBUG 输出确定卡在哪一行，同时看看 1069 附近的完整代码：
+
+```bash
+# 看 timer 检查的完整上下文
+sed -n '1060,1085p' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_machine.c
+```
+
+然后编译跑：
+
+```bash
+cd ~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+make linux-rebuild -j$(nproc) && make opensbi-rebuild -j$(nproc)
+cp output/images/fw_payload.bin /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/images/python/
+```
+
+
+找到关键问题了。
+
+`riscv_machine_get_sleep_duration()` 是 TinyEMU 中 **唯一** 检查 `mtime >= mtimecmp` 并设置 `MIP_MTIP` 的地方。如果这个函数没被调用，timer 中断永远不会触发。
+
+问题是：你的 C++ 包装层调用它了吗？
+
+```bash
+# 看 C++ 包装层的主循环怎么调的
+grep -n "sleep_duration\|get_sleep\|virt_machine_run\|interp\|_run\|_step" /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/src/tinyemu_vm.cpp | head -20
+```
+
+```bash
+# 看 VirtMachine 结构体里 get_sleep_duration 的函数指针
+grep -n "get_sleep_duration\|virt_machine_run" /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/virt_machine.h | head -10
+```
+
+```bash
+# 看原版 TinyEMU 主循环怎么调的（作为参考）
+grep -rn "get_sleep_duration\|virt_machine_run" /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/*.c | head -10
+```
+
+我的假设是：C++ 侧只调了 `virt_machine_run()` 执行指令，但没调 `get_sleep_duration()` 来推进 timer 比较。这样 `MIP_MTIP` 永远不会被 set，OpenSBI 永远收不到 M-mode timer 中断，也就永远不会给内核注入 S-mode timer 中断。内核在 `cpuhp_setup_state` 里等第一个 tick，死等。
+
+
+找到根因了。
+
+C++ 包装层 **完全没有调用 `virt_machine_get_sleep_duration()`**。而这个函数是 TinyEMU 中 **唯一** 检查 `mtime >= mtimecmp` 并设置 `MIP_MTIP` 的地方。没有它，timer 中断永远不会触发，内核永远等不到第一个 tick。
+
+看看原版 `temu.c` 的 `virt_machine_run` 和 C++ 的主循环对比一下：
+
+```bash
+# 原版主循环
+sed -n '535,560p' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/temu.c
+```
+
+```bash
+# C++ 包装层主循环（看 420-460 行附近，_running.store(true) 那块）
+sed -n '400,500p' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/src/tinyemu_vm.cpp
+```
+
+```bash
+# 看 virt_machine_run 和 virt_machine_get_sleep_duration 的声明
+find /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/ -name "*.h" | xargs grep -l "virt_machine_run\|get_sleep_duration" 2>/dev/null
+```
+
+贴结果给我。修复方案很简单：在 C++ 主循环每次调 `virt_machine_interp()` 之后，加一句 `virt_machine_get_sleep_duration(m, MAX_SLEEP_TIME)` 来推进 timer 检查。
+
+
+
+确认了。C++ 层完全没调 `virt_machine_get_sleep_duration()`。需要看 `_worker_main()` 后半段——实际执行 VM 的循环在哪：
+
+```bash
+sed -n '500,580p' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/src/tinyemu_vm.cpp
+```
+
+```bash
+# 同时看 machine.h 里的声明
+grep -n "get_sleep_duration\|virt_machine_run\|virt_machine_interp" /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/machine.h
+```
+
+我需要看到 C++ 主循环里调 `virt_machine_interp` 或 `virt_machine_run` 的那段代码，才能给你精确的修复位置。修复本身很简单——在每次执行指令的循环里加一句 timer 检查就行。
+
+
+等等，我之前的假设是错的！C++ 代码第 686 行：
+
+```cpp
+int delay_ms = vm->vmc->virt_machine_get_sleep_duration(vm, 10);
+```
+
+**`virt_machine_get_sleep_duration` 是有调用的。** Timer 检查确实在发生。所以根因不是"没调 timer 检查"。
+
+需要重新定位。看看 `rtc_get_time` 的实现——timer 比较依
+
+
+抱歉，话说到一半断了。重新理清思路——
+
+C++ 层第 686 行确实调了 `virt_machine_get_sleep_duration`，所以 timer 检查是有的。我之前的假设是错的。
+
+那问题就转向：timer 检查虽然在跑，但 `MIP_MTIP` 可能一直没被 set。需要查时钟源是否匹配。
+
+```bash
+# 看 rtc_get_time 的实现——内核读 time CSR 和 TinyEMU 比较 timecmp 用的是不是同一个时钟？
+sed -n '88,105p' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_machine.c
+```
+
+```bash
+# 看内核读 time CSR 时 TinyEMU 返回什么
+grep -n "0xc01\|CSR_TIME\|rdtime\|rtc_get_time\|RTC_FREQ" /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_cpu.c | head -15
+```
+
+```bash
+# 看 _exec_cycles_per_tick 的值
+grep -n "exec_cycles_per_tick\|MAX_EXEC_CYCLE" /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/src/tinyemu_vm.cpp /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/src/tinyemu_vm.h | head -10
+```
+
+我怀疑的方向：`rtc_get_time()` 如果用的是真实墙钟时间（`rtc_real_time = true`），而内核读 `time` CSR 拿到的是模拟周期数，两者不一致的话，`timecmp` 比较就永远对不上——内核设的 timecmp 是基于 CSR time 的值，但 `get_sleep_duration` 用 `rtc_get_time()` 去比较，两个时钟源不同步。
+
+
+找到了！这是一个时钟源不匹配的问题。
+
+C++ 层第 590 行设了 `p.rtc_real_time = true`，所以：
+- `rtc_get_time()` 返回的是**真实墙钟时间**
+- `get_sleep_duration()` 用墙钟时间和 `timecmp` 比较
+
+但内核读 CSR `0xc01` (time) 拿到的值是什么？需要确认：
+
+```bash
+# 看 CSR 0xc01 返回什么值
+sed -n '725,745p' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_cpu.c
+```
+
+```bash
+# 看 RTC_FREQ 和 RTC_FREQ_DIV 的定义
+grep -n "RTC_FREQ\|RTC_FREQ_DIV\|CPU_FREQ" /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_machine.c | head -10
+```
+
+```bash
+# 看 CLINT mtime 读取（offset 0xBFF8）是否也用 rtc_get_time
+sed -n '195,220p' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_machine.c
+```
+
+我的假设是：内核读 CSR time 拿到的是 `cycles / RTC_FREQ_DIV`（基于模拟 CPU 周期），然后设 `timecmp = time + delta`。但 `get_sleep_duration` 用墙钟时间去比较。模拟器跑得比真实时间慢得多，所以墙钟时间远远跑在前面，`timecmp` 可能在墙钟看来早就过期了——或者反过来，模拟周期数远小于墙钟时间，导致比较永远不触发。
+
+贴结果确认。
+
+
+
+确认了！这是一个**时钟源不匹配**的根本性 bug。
+
+三个地方读"时间"，返回的是完全不同的值：
+
+| 谁在读 | 读什么 | 返回值 |
+|---|---|---|
+| 内核 (CSR 0xc01 `time`) | `riscv_cpu.c` | `insn_counter`（原始指令计数） |
+| OpenSBI (CLINT mtime 0xBFF8) | `riscv_machine.c` | `rtc_get_time()` = **墙钟时间**（因为 `rtc_real_time=true`） |
+| Timer 比较 (`get_sleep_duration`) | `riscv_machine.c` | `rtc_get_time()` = **墙钟时间** |
+
+RISC-V 规范要求 CSR `time` 和 CLINT `mtime` 必须是**同一个值**。但这里一个是指令计数，一个是墙钟时间。
+
+所以当内核设 timer 时：
+1. 内核读 CSR time → 得到 `insn_counter`（比如 500000）
+2. 内核算 `timecmp = 500000 + delta`（比如 600000）
+3. OpenSBI 写入 CLINT mtimecmp = 600000
+4. `get_sleep_duration` 用墙钟时间（可能已经是 50000000）和 600000 比较
+5. 墙钟 >> timecmp → timer 立刻触发，但时间完全错乱
+
+反过来如果模
+
+
+对，之前为了过 CSR 报错，给 `insn_counter` 加了自增。但这恰好制造了今天的问题。
+
+现在整条链路是这样的：
+
+1. 内核读 CSR time (0xc01) → 拿到 `insn_counter`（比如 500000）
+2. 内核算 `timecmp = 500000 + delta`，调 `sbi_set_timer(600000)`
+3. OpenSBI 写入 CLINT mtimecmp = 600000
+4. `get_sleep_duration` 比较：`rtc_get_time()` >= 600000？
+5. 但 `rtc_real_time = true`，所以 `rtc_get_time()` 返回的是**墙钟时间**（可能是 50000000），和 `insn_counter` 完全不在一个坐标系
+
+两个时钟源对不上，timer 行为完全不可预测。
+
+修复方案很简单，两处改动：
+
+第一处，C++ 层关掉 real time：
+
+```bash
+# tinyemu_vm.cpp 第 590 行
+sed -n '590,590p' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/src/tinyemu_vm.cpp
+```
+
+改成：
+```cpp
+p.rtc_real_time = false;
+```
+
+第二处，去掉 `RTC_FREQ_DIV` 的除法，让 CLINT mtime 和 CSR time 返回同一个值：
+
+```bash
+# riscv_machine.c 第 97 行
+sed -n '95,100p' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_machine.c
+```
+
+改成：
+```c
+val = riscv_cpu_get_cycles(m->cpu_state);  // 去掉 / RTC_FREQ_DIV
+```
+
+这样三个地方全部统一到 `insn_counter`：
+- CSR time (0xc01) → `insn_counter` ✓
+- CLINT mtime (0xBFF8) → `insn_counter` ✓
+- Timer 比较 → `insn_counter` >= `timecmp` ✓
+
+VM 里的时间不会和墙钟同步（会跑得快或慢），但对一个嵌入 Godot 的终端模拟器来说完全没问题——timer 能正确触发才是关键。
+
+改完之后重新编译 TinyEMU 的 C++ 部分跑一下试试。
+
+
+哈哈抱歉柠檬叔，直接来：
+
+```bash
+# 第一处：关掉 rtc_real_time
+sed -i 's/p.rtc_real_time = true;/p.rtc_real_time = false;/' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/src/tinyemu_vm.cpp
+
+# 第二处：去掉 RTC_FREQ_DIV 除法，让 mtime == insn_counter
+sed -i 's|val = riscv_cpu_get_cycles(m->cpu_state) / RTC_FREQ_DIV;|val = riscv_cpu_get_cycles(m->cpu_state);|' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_machine.c
+
+# 验证改对了
+grep -n "rtc_real_time" /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/src/tinyemu_vm.cpp
+grep -n "riscv_cpu_get_cycles" /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_machine.c
+```
+
+验证没问题后重新编译跑：
+
+```bash
+cd /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu ; scons -j$(nproc)
+```
+
+
+还是卡住了。说明时钟统一只是一部分问题，或者 `riscv_cpu_get_cycles()` 和 `insn_counter` 根本不是同一个值。需要继续挖：
+
+```bash
+# riscv_cpu_get_cycles 返回的到底是什么？
+grep -n "riscv_cpu_get_cycles\|get_cycles" /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_cpu.c | head -10
+```
+
+```bash
+# 看完整的 get_sleep_duration 实现——timer 中断到底怎么触发的
+sed -n '1062,1125p' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_machine.c
+```
+
+```bash
+# WFI 指令怎么处理的——内核 schedule() 最终会走到 WFI
+grep -n "wfi\|WFI\|wait_for_interrupt\|power_down" /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_cpu.c | head -10
+```
+
+
+找到了。
+
+WFI 设 `power_down_flag = true`，interp 循环退出，`insn_counter` 停止递增。但现在 `rtc_real_time = false`，`rtc_get_time()` 返回的就是 `insn_counter`——它也停了。所以：
+
+1. 内核设 timecmp = insn_counter + delta
+2. 内核执行 WFI 等 timer
+3. insn_counter 冻住 → mtime 冻住 → 永远追不上 timecmp → MIP_MTIP 永远不 set
+4. 死锁
+
+修复：`get_sleep_duration` 里，当 CPU 在 WFI 且 timer 待触发时，直接 set MIP_MTIP，不等了。
+
+```bash
+# 先确认行号
+sed -n '1068,1084p' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_machine.c
+```
+
+确认后替换：
+
+```bash
+sed -i '1074,1079c\
+        } else {\
+            /* WFI + insn-based clock: time is frozen, force timer to fire */\
+            if (!m->rtc_real_time && riscv_cpu_get_power_down(s)) {\
+                riscv_cpu_set_mip(s, MIP_MTIP);\
+                delay = 0;\
+            } else {\
+                /* convert delay to ms */\
+                delay1 = delay1 / (RTC_FREQ / 1000);\
+                if (delay1 < delay)\
+                    delay = delay1;\
+            }\
+        }' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_machine.c
+```
+
+然后验证 + 编译：
+
+```bash
+sed -n '1062,1090p' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_machine.c
+```
+
+```bash
+cd /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu ; scons -j$(nproc)
+```
+
+
+
+还是卡住。说明 CPU 可能根本没在 WFI——它在 `cpuhp_setup_state` 里忙循环，`insn_counter` 在涨，但 `get_sleep_duration` 里的 timer 检查可能没被正确触发。
+
+需要看 C++ 的 tick 循环到底怎么调度的：
+
+```bash
+# 看完整的 tick/process 函数，get_sleep_duration 和 interp 是怎么配合的
+sed -n '680,730p' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/src/tinyemu_vm.cpp
+```
+
+```bash
+# timecmp 初始值是什么
+grep -n "timecmp" /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_machine.c | head -15
+```
+
+```bash
+# interp 循环里有没有中断检查
+sed -n '1285,1335p' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_cpu.c
+```
+
+
+看到了。关键发现：
+
+`riscv_cpu_get_cycles()` 确实返回 `insn_counter`（第 1317 行），所以时钟源是统一的。`get_sleep_duration` 的逻辑也没问题——当 `delay1 <= 0` 时会 set MIP_MTIP。
+
+但问题在于：MIP_MTIP 只在 `get_sleep_duration` 里被 set，而这个函数只在 interp **之间**调用。interp 内部执行 100 万条指令期间，没有人检查 timer。
+
+不过这应该不致命——最多延迟一个 tick。真正需要确认的是：interp 内部到底有没有中断分发逻辑？如果 MIP_MTIP 被 set 了但 interp 不检查 `mip & mie`，中断就永远送不出去。
+
+```bash
+# 看 interp 内部的中断检查逻辑（模板函数开头）
+grep -n "raise_interrupt\|mip.*mie\|pending.*interrupt\|handle_interrupt\|RAISE\|trap\|exception" /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv
+
+
+
+找到根因了！
+
+TinyEMU 只通过 CLINT MMIO（`0x4000`/`0x4004`）来设 timecmp。但内核走的是 SBI ecall 路径（`sbi_set_timer()`），而 TinyEMU 的 SBI ecall handler 里根本没处理 set_timer！
+
+`riscv_cpu_template.h` 里搜不到 `set_timer`/`timecmp`，说明 SBI ecall 被当成 `CAUSE_SUPERVISOR_ECALL` 异常处理了，但没有实际设 timecmp。所以 timecmp 一直保持初始值 0（或者被内核早期某次 CLINT MMIO 写成了 `0xFFFFFFFFFFFFFFFF`）。
+
+看看 SBI ecall 的处理逻辑在哪：
+
+```bash
+# 找 ecall 的处理分支 - 可能在 template 里
+grep -n "CAUSE_SUPERVISOR_ECALL\|ecall\|a7\|a6\|fid\|ext_id" /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_cpu_template.h | head -30
+```
+
+```bash
+# 看 riscv_cpu.c 里 1121 行附近的 ecall 处理
+sed -n '1110,1160p' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_cpu.c
+```
+
+```bash
+# 搜所有文件里的 SBI 处理
+grep -rn "SBI\|sbi\|set_timer\|ecall" /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/*.c /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/*.h | grep -i "timer\|0x00\|0x54\|ext.*0" | head -20
+```
+
+🎉 柠檬叔，timer 通了！
+
+内核已经冲过 `time_init()`，initcall 在一个接一个地跑，时间戳在正常递增。这就是那个 int64 溢出 bug 的修复效果——`timecmp = U64_MAX` 时不再错误触发 MIP_MTIP，中断风暴消失了。
+
+现在看它能跑多远，等它停下来或者出新问题再贴给我。
+
+
+
+
+
+
+
+
+
+
+
+
+好，`riscv_machine.c` 只 include 了 `riscv_cpu.h`（公开接口），没有 `riscv_cpu_priv.h`（私有结构）。所以它看不到 `RISCVCPUState` 的内部字段。
+
+最干净的方案：**在 `riscv_cpu.h` 里加一个 setter 函数声明，在 `riscv_cpu.c` 里实现它。**
+
+好，完整改动如下：
+
+**文件 1：`riscv_cpu_priv.h`** — 在 `RISCVCPUState` 结构体里加字段
+
+在 `PhysMemoryMap *mem_map;` 之后加一行：
+
+```c
+    PhysMemoryMap *mem_map;
+
+    /* pointer to machine's timecmp for in-loop timer check */
+    uint64_t *timecmp_ptr;
+```
+
+**文件 2：`riscv_cpu.h`** — 加函数声明
+
+在 `RISCVCPUState *riscv_cpu_init(...)` 声明附近加：
+
+```c
+void riscv_cpu_set_timecmp_ptr(RISCVCPUState *s, uint64_t *timecmp_ptr);
+```
+
+**文件 3：`riscv_cpu.c`** — 实现 setter
+
+在文件末尾（`riscv_cpu_init` 函数之后）加：
+
+```c
+void riscv_cpu_set_timecmp_ptr(RISCVCPUState *s, uint64_t *timecmp_ptr)
+{
+    s->timecmp_ptr = timecmp_ptr;
+}
+```
+
+**文件 4：`riscv_machine.c`** — 初始化时设置指针
+
+在第 921 行（`if (!s->cpu_state)` 检查之后）加：
+
+```c
+    s->cpu_state = riscv_cpu_init(s->mem_map, max_xlen);
+    if (!s->cpu_state) {
+        vm_error("unsupported max_xlen=%d\n", max_xlen);
+        return NULL;
+    }
+    riscv_cpu_set_timecmp_ptr(s->cpu_state, &s->timecmp);
+```
+
+**文件 5：`riscv_cpu_template.h`** — 基本块边界加 timer 检查
+
+在第 252 行的 `/* check pending interrupts */` 之前插入：
+
+```c
+            if (unlikely(s->n_cycles <= 0))
+                goto the_end;
+
+            /* inline timer check: set MIP_MTIP if mtime >= timecmp */
+            if (s->timecmp_ptr &&
+                s->insn_counter >= *s->timecmp_ptr) {
+                s->mip |= MIP_MTIP;
+            }
+
+            /* check pending interrupts */
+            if (unlikely((s->mip & s->mie) != 0)) {
+```
+
+就这 5 处改动。逻辑是：每次 interp 走到基本块边界时，顺手比较一下 `insn_counter >= timecmp`，如果到期就直接 set MIP_MTIP。这样 timer 中断不用等到 interp 返回就能被检测到。
+
+柠檬叔，你来改还是我直接写文件？
+
+
+
+好，现在整个链路都清楚了。让我理一下关键发现：
+
+`mideleg` 初始值是 0（`riscv_cpu_init` 里没有设置它），由 OpenSBI 在启动时通过写 CSR 0x303 来设置。OpenSBI 会把 `MIP_SSIP | MIP_STIP | MIP_SEIP` 委托给 S-mode。
+
+链路应该是通的... 但有一个我之前忽略的关键问题。
+
+看 `riscv_machine_get_sleep_duration` — 这个函数是在 interp 循环**外部**被调用的，用来决定宿主要 sleep 多久。但在 `!rtc_real_time` 模式下，时间是靠 `insn_counter` 驱动的，只有 interp 在跑时 `insn_counter` 才会增长。
+
+问题在于：当 CPU 进入 WFI（`power_down_flag = true`）时，`insn_counter` 停止增长，`mtime` 也停止增长，timer 永远不会到期。虽然 `riscv_machine_get_sleep_duration` 里有 WFI 的特殊处理（第 1079-1081 行，强制 fire timer），但这取决于这个函数是否被正确调用。
+
+让我确认 C++ 层的主循环是怎么调用的：
+
+```bash
+grep -n 'sleep_duration\|get_sleep\|power_down\|virt_machine_interp' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_machine.c | head -20
+```
+
+```bash
+find /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu -name '*.cpp' -o -name '*.h' | xargs grep -ln 'virt_machine_interp\|sleep_duration\|get_sleep' 2>/dev/null
+```
+
+两个一起跑。我怀疑 C++ 层的主循环可能没有在每次 interp 返回后调用 `get_sleep_duration`，导致 WFI 时 timer 不会被强制 fire。
+
+
+
+[TIMER_DBG] raise_exc: cause=0x80000009 deleg=1 priv=1 mip=0x00000a00 mie=0x000002a8 mideleg=0x00000222 insn=79359539
+[TIMER_DBG] set_mip: mask=0x00000080 mip=0x00000080 mie=0x000002a8 priv=1 pd=1 insn=79559025
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79559025
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79559202
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79559379
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79559556
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79559733
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79559910
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79560087
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79560264
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79560441
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79560618
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79560795
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79560972
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79561149
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79561326
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79561503
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79561680
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79561857
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79562034
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79562211
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79562388
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79562565
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79562742
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79562919
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79563096
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79563273
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 insn=79563450
+
+
+抓到了！这就是根因。看数据：
+
+```
+cause=0x80000007  → M-mode timer interrupt (MTIP, bit 7)
+deleg=0           → 不委托，trap 到 M-mode (OpenSBI)
+priv=1            → 当前在 S-mode
+mip=0x00000080    → MIP_MTIP set
+mie=0x000002a8    → 二进制 0010 1010 1000
+mideleg=0x00000222 → 二进制 0010 0010 0010
+```
+
+每隔约 177 条指令就触发一次，而且 `mip_write`（CSR 0x344 写入）只出现了 0 次（除了最开头那一次）。这说明：
+
+**OpenSBI 收到了 M-mode timer 中断（cause=0x80000007），trap 到 M-mode 处理，但它没有写 `mip.STIP`（CSR 0x344）来通知 S-mode 内核，也没有清除 `MIP_MTIP`。** 所以 `MIP_MTIP` 一直 pending，每个基本块边界都重新触发 trap，形成死循环。
+
+问题出在 OpenSBI 的 timer 中断处理。OpenSBI 正常流程应该是：
+1. 收到 M-mode timer 中断
+2. 清除 `mie.MTIE`（防止重入）
+3. set `mip.STIP`（通知 S-mode）
+4. `mret` 返回 S-mode
+
+但它没有 set `mip.STIP`。最可能的原因是：**OpenSBI 的 timer 处理依赖 CLINT MMIO 来操作，而不是直接写 CSR 0x344**。具体来说，OpenSBI 可能通过写 CLINT 的某个寄存器来 set STIP，但 TinyEMU 的 CLINT 实现不支持这个操作。
+
+让我确认 TinyEMU CLINT 的 MMIO 写处理：
+
+```bash
+grep -n 'clint\|CLINT' riscv_machine.c | head -30
+```
+
+```bash
+sed -n '200,250p' riscv_machine.c
+```
+
+两个一起跑。我需要看 CLINT MMIO 写处理是否覆盖了 `msip` 和 `mtimecmp` 之外的寄存器。OpenSBI 可能在用 CLINT 地址空间里不存在的寄存器来操作 STIP。
+
+
+找到根因了！
+
+看 CLINT 的写处理 — 只处理了 `0x4000`/`0x4004`（mtimecmp），完全没有处理 `0x0000`（msip）。
+
+OpenSBI 的 timer 中断处理流程是：
+1. 收到 M-mode timer 中断
+2. 清除 `mie.MTIE`（防止重入）
+3. **写 CSR `mip` 来 set `STIP`** — 但等等...
+
+让我重新想。OpenSBI v1.6 的 timer 处理实际上是通过 `sbi_timer_process()` 来做的。它会：
+1. 清除 `mie.MTIE`
+2. 直接用 CSR 指令 `csrs mip, MIP_STIP` 来 set STIP
+
+但我们的调试输出显示 `mip_write`（CSR 0x344 写入）没有被触发！这说明 OpenSBI 可能不是通过写 CSR 0x344 来 set STIP 的。
+
+等等 — 再看一遍 `get_pending_irq_mask`：
+
+```c
+case PRV_S:
+    enabled_ints = ~s->mideleg;      // 未委托的中断
+    if (s->mstatus & MSTATUS_SIE)
+        enabled_ints |= s->mideleg;  // 已委托的中断需要 SIE=1
+```
+
+`mideleg = 0x222 = SSIP(bit1) | STIP(bit5) | SEIP(bit9)`。`MIP_MTIP` 是 bit 7，不在 mideleg 中，所以 `~mideleg` 包含 bit 7。当 CPU 在 S-mode 时，`enabled_ints` 总是包含 `MIP_MTIP`（不需要 SIE）。
+
+所以 MIP_MTIP 被 set → trap 到 M-mode（OpenSBI）→ OpenSBI 处理 → 但 MIP_MTIP 没被清除 → mret 回 S-mode → 立刻又触发 → 死循环。
+
+关键问题：**OpenSBI 在 timer 中断处理中应该清除 `mie.MTIE` 来屏蔽后续 M-mode timer 中断**。但从日志看，每 177 条指令就重新触发，说明 `mie.MTIE` 没有被成功清除，或者 `mret` 后又被恢复了。
+
+不对 — 更可能的问题是：**OpenSBI 的 trap handler 根本没有正确执行**。它可能在 trap 入口就出了问题。
+
+让我加一个更关键的诊断 — 在 `raise_exception2` 的 M-mode trap 路径里，打印 `mtvec` 的值：
+
+```bash
+sed -n '1165,1180p' riscv_cpu.c
+```
+
+同时看看 `mtvec` 是否被正确设置：
+
+```bash
+grep -n 'mtvec' riscv_cpu.c | head -15
+```
+
+两个一起跑。
+
+确认了！这就是根因。
+
+`mtvec` 和 `stvec` 都有同样的问题：
+- 写入时 `val & ~3` 丢弃了低 2 位的 mode 信息
+- 使用时 `s->pc = s->mtvec` 直接跳转，没有处理 vectored mode
+
+RISC-V spec 规定 `mtvec` 低 2 位是 mode：
+- `0` = Direct — 所有 trap 跳到 `BASE`
+- `1` = Vectored — 异常跳到 `BASE`，中断跳到 `BASE + 4 * cause`
+
+OpenSBI 用 vectored mode，所以 timer 中断（cause=7）应该跳到 `BASE + 28`，但 TinyEMU 把它跳到了 `BASE + 0`（exception 入口）。OpenSBI 的 exception handler 不认识这个中断，可能直接 `mret` 了，什么都没做。所以 `MIP_MTIP` 永远不被清除，死循环。
+
+修复方案 — 同时修 `mtvec` 和 `stvec`：
+
+```bash
+cat > /tmp/tvec_fix.py << 'EOF'
+import re
+
+with open('riscv_cpu.c', 'r') as f:
+    lines = f.readlines()
+
+output = []
+for i, line in enumerate(lines):
+    # Fix mtvec write (CSR 0x305): preserve mode bits
+    if 's->mtvec = val & ~3;' in line:
+        output.append(line.replace('s->mtvec = val & ~3;', 's->mtvec = val;'))
+        print(f"Fixed mtvec write at line {i+1}")
+    # Fix stvec write: preserve mode bits
+    elif 's->stvec = val & ~3;' in line:
+        output.append(line.replace('s->stvec = val & ~3;', 's->stvec = val;'))
+        print(f"Fixed stvec write at line {i+1}")
+    # Fix mtvec use in raise_exception2: handle vectored mode
+    elif 's->pc = s->mtvec;' in line:
+        output.append('        if ((s->mtvec & 3) == 1 && (cause & CAUSE_INTERRUPT))\n')
+        output.append('            s->pc = (s->mtvec & ~3) + 4 * (cause & 0x7fffffff);\n')
+        output.append('        else\n')
+        output.append('            s->pc = s->mtvec & ~3;\n')
+        print(f"Fixed mtvec dispatch at line {i+1}")
+    # Fix stvec use in raise_exception2: handle vectored mode
+    elif 's->pc = s->stvec;' in line:
+        output.append('        if ((s->stvec & 3) == 1 && (cause & CAUSE_INTERRUPT))\n')
+        output.append('            s->pc = (s->stvec & ~3) + 4 * (cause & 0x7fffffff);\n')
+        output.append('        else\n')
+        output.append('            s->pc = s->stvec & ~3;\n')
+        print(f"Fixed stvec dispatch at line {i+1}")
+    else:
+        output.append(line)
+
+with open('riscv_cpu.c', 'w') as f:
+    f.writelines(output)
+EOF
+python3 /tmp/tvec_fix.py
+```
+
+跑完后验证：
+
+```bash
+grep -n 'mtvec\|stvec' riscv_cpu.c | head -20
+```
