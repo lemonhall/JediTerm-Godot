@@ -193,6 +193,7 @@ void TinyEmuVM::_console_write_cb(void *opaque, const uint8_t *buf, int len) {
 		return;
 	}
 	auto *self = static_cast<TinyEmuVM *>(opaque);
+        fprintf(stderr, "_console_write_cb: len=%d first=0x%02x\n", len, buf[0]);
 	self->_out.push(buf, static_cast<size_t>(len));
 }
 
@@ -563,10 +564,10 @@ void TinyEmuVM::_worker_main() {
 		return copy_len < len ? -1 : 0;
 	};
 
-	CharacterDevice console_dev = {};
-	console_dev.opaque = this;
-	console_dev.write_data = &TinyEmuVM::_console_write_cb;
-	console_dev.read_data = &TinyEmuVM::_console_read_cb;
+        // Use persistent member instead of stack-local variable
+        _console_dev_storage.opaque = this;
+        _console_dev_storage.write_data = &TinyEmuVM::_console_write_cb;
+        _console_dev_storage.read_data = &TinyEmuVM::_console_read_cb;
 
 	EthernetDevice *net_dev = nullptr;
 	if (_network_enabled) {
@@ -587,15 +588,15 @@ void TinyEmuVM::_worker_main() {
 	p.machine_name = dup_cstr("riscv64");
 	p.ram_size = static_cast<uint64_t>(_ram_mb) << 20;
 	p.rtc_real_time = true;
-	p.console = &console_dev;
+        p.console = &_console_dev_storage;
 	if (net_dev != nullptr) {
 		p.eth_count = 1;
 		p.tab_eth[0].net = net_dev;
 	}
 	if (!_rootfs_path.is_empty()) {
-		p.cmdline = dup_cstr("console=hvc0 root=/dev/vda rw");
+		p.cmdline = dup_cstr("earlycon=sbi console=hvc0 root=/dev/vda rw");
 	} else {
-		p.cmdline = dup_cstr("console=hvc0");
+		p.cmdline = dup_cstr("earlycon=sbi console=hvc0");
 	}
 
 	{

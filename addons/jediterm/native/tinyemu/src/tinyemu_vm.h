@@ -2,6 +2,11 @@
 
 #include "spsc_ring_buffer.h"
 
+// CharacterDevice lives as long as the VM
+extern "C" {
+#include "virtio.h"
+}
+
 #include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/variant/packed_byte_array.hpp>
 #include <godot_cpp/variant/string.hpp>
@@ -76,6 +81,7 @@ private:
 
 	jediterm_tinyemu::SpscRingBuffer _in{1 << 16}; // 64KiB
 	jediterm_tinyemu::SpscRingBuffer _out{1 << 20}; // 1MiB
+        CharacterDevice _console_dev_storage{};
 };
 
 } // namespace godot

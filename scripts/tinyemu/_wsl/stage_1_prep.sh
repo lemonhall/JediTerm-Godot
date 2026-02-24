@@ -62,7 +62,9 @@ cp -r "$SCRIPT_DIR/config/overlay" "$BR_DIR/board/jediterm-python/"
 
 echo "[INFO] Applying defconfig..."
 cd "$BR_DIR"
+rm -f .config .config.old || true
 make BR2_DL_DIR="$DL_DIR" jediterm_py312_defconfig
+make BR2_DL_DIR="$DL_DIR" olddefconfig
 
 echo "[INFO] Pre-downloading sources (resumable)..."
 make BR2_DL_DIR="$DL_DIR" source
@@ -70,4 +72,3 @@ make BR2_DL_DIR="$DL_DIR" source
 echo "=== Stage 1 DONE ==="
 echo "=== BR_DIR: $BR_DIR ==="
 echo "=== DL_DIR: $DL_DIR ==="
-

@@ -264,7 +264,7 @@ func _on_start_pressed() -> void:
 	if bios_os == "" or not FileAccess.file_exists(bios_os):
 		status.text = "TinyEmuVM: BIOS not found: %s" % bios_res
 		return
-	if kernel_os == "" or not FileAccess.file_exists(kernel_os):
+	if kernel_res != "" and (kernel_os == "" or not FileAccess.file_exists(kernel_os)):
 		status.text = "TinyEmuVM: kernel not found: %s" % kernel_res
 		return
 

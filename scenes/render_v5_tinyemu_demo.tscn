@@ -1,9 +1,9 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://dt2b4vw4mhfro"]
 
-[ext_resource type="Script" path="res://scenes/render_v5_tinyemu_demo.gd" id="1"]
-[ext_resource type="Script" path="res://addons/jediterm/render/terminal_control.gd" id="2"]
+[ext_resource type="Script" uid="uid://cilpef3rnauce" path="res://scenes/render_v5_tinyemu_demo.gd" id="1"]
+[ext_resource type="Script" uid="uid://ryfpvlowy2jg" path="res://addons/jediterm/render/terminal_control.gd" id="2"]
 
-[node name="RenderV5TinyEmuDemo" type="Control"]
+[node name="RenderV5TinyEmuDemo" type="Control" unique_id=187708951]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -12,7 +12,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1")
 
-[node name="Info" type="Label" parent="."]
+[node name="Info" type="Label" parent="." unique_id=156904761]
 layout_mode = 0
 offset_left = 16.0
 offset_top = 10.0
@@ -20,14 +20,14 @@ offset_right = 1600.0
 offset_bottom = 34.0
 text = "Render v5 TinyEMU demo"
 
-[node name="Status" type="Label" parent="."]
+[node name="Status" type="Label" parent="." unique_id=396058570]
 layout_mode = 0
 offset_left = 16.0
 offset_top = 38.0
 offset_right = 1600.0
 offset_bottom = 62.0
 
-[node name="TerminalControl" type="Control" parent="."]
+[node name="TerminalControl" type="Control" parent="." unique_id=1715913797]
 anchors_preset = 0
 offset_left = 16.0
 offset_top = 72.0
@@ -39,35 +39,35 @@ terminal_font_size = 24
 grid_columns = 130
 grid_rows = 25
 
-[node name="Controls" type="VBoxContainer" parent="."]
+[node name="Controls" type="VBoxContainer" parent="." unique_id=199209238]
 layout_mode = 0
 offset_left = 1320.0
 offset_top = 72.0
 offset_right = 1600.0
 offset_bottom = 712.0
 
-[node name="RomLabel" type="Label" parent="Controls"]
+[node name="RomLabel" type="Label" parent="Controls" unique_id=1601934307]
 layout_mode = 2
 text = "ROM 选择"
 
-[node name="RomSelect" type="OptionButton" parent="Controls"]
+[node name="RomSelect" type="OptionButton" parent="Controls" unique_id=1075857170]
 layout_mode = 2
 
-[node name="ProxyLabel" type="Label" parent="Controls"]
+[node name="ProxyLabel" type="Label" parent="Controls" unique_id=301846431]
 layout_mode = 2
 text = "代理地址"
 
-[node name="ProxyEdit" type="LineEdit" parent="Controls"]
+[node name="ProxyEdit" type="LineEdit" parent="Controls" unique_id=1212338357]
 layout_mode = 2
 placeholder_text = "http://10.0.2.2:7897"
 
-[node name="Buttons" type="HBoxContainer" parent="Controls"]
+[node name="Buttons" type="HBoxContainer" parent="Controls" unique_id=389789887]
 layout_mode = 2
 
-[node name="StartButton" type="Button" parent="Controls/Buttons"]
+[node name="StartButton" type="Button" parent="Controls/Buttons" unique_id=998188885]
 layout_mode = 2
 text = "启动 VM"
 
-[node name="StopButton" type="Button" parent="Controls/Buttons"]
+[node name="StopButton" type="Button" parent="Controls/Buttons" unique_id=1010152173]
 layout_mode = 2
 text = "停止 VM"

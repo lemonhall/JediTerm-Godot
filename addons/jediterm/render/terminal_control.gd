@@ -31,6 +31,9 @@ const DEFAULT_LATIN_MONO_FONT_PATH := "res://addons/jediterm/render/fonts/jet_br
 @export var consume_keys: PackedInt32Array = PackedInt32Array([KEY_TAB, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_ENTER, KEY_KP_ENTER, KEY_ESCAPE, KEY_BACKSPACE])
 @export var enable_mouse_selection: bool = true
 @export var selection_mouse_button: int = MOUSE_BUTTON_LEFT
+@export var enable_scrollback: bool = true
+@export var scroll_wheel_lines: int = 3
+@export var scroll_page_lines: int = 0 # 0 means use grid_rows
 @export var show_cursor: bool = true
 @export var auto_resize_terminal: bool = false
 
@@ -48,6 +51,7 @@ var _cursor_blink_timer: float = 0.0
 
 var _text_buffer: RefCounted = null
 var _scroll_origin: int = 0
+var _last_history_lines_count: int = 0
 var _terminal: RefCounted = null
 var _terminal_output = null
 var _fallback_terminal_font: Font = null
@@ -82,13 +86,15 @@ func _notification(what: int) -> void:
 
 func set_text_buffer(text_buffer: RefCounted) -> void:
 	_text_buffer = text_buffer
+	_last_history_lines_count = _get_history_lines_count()
+	_scroll_origin = _clamp_scroll_origin(int(_scroll_origin))
 	_request_redraw()
 
 func get_text_buffer() -> RefCounted:
 	return _text_buffer
 
 func set_scroll_origin(scroll_origin: int) -> void:
-	_scroll_origin = int(scroll_origin)
+	_scroll_origin = _clamp_scroll_origin(int(scroll_origin))
 	_request_redraw()
 
 func get_scroll_origin() -> int:
@@ -109,6 +115,7 @@ func set_terminal_font(font: Font, font_size: int = 0) -> void:
 	_request_redraw()
 
 func _process(delta: float) -> void:
+	_sync_scrollback_with_history_changes()
 	if cursor_blink and show_cursor and has_focus():
 		_cursor_blink_timer += delta
 		if _cursor_blink_timer >= cursor_blink_interval:
@@ -182,6 +189,8 @@ func handle_key_event(event: InputEventKey) -> bool:
 	return _send_bytes(bytes)
 
 func _gui_input(event: InputEvent) -> void:
+	if _handle_scrollback_input(event):
+		return
 	if enable_mouse_selection and _handle_mouse_event_for_selection(event):
 		return
 	if not has_focus():
@@ -236,6 +245,107 @@ func clear_selection() -> void:
 	_is_selecting = false
 	_last_selection_cell = Vector2i(-1, -1)
 	_request_redraw()
+
+func _get_history_lines_count() -> int:
+	if _text_buffer == null:
+		return 0
+	if _text_buffer.has_method("get_history_lines_count"):
+		return int(_text_buffer.get_history_lines_count())
+	if _text_buffer.has_method("getHistoryLinesCount"):
+		return int(_text_buffer.getHistoryLinesCount())
+	return 0
+
+func _clamp_scroll_origin(v: int) -> int:
+	var history := _get_history_lines_count()
+	if history <= 0:
+		return 0
+	return clampi(int(v), -history, 0)
+
+func _sync_scrollback_with_history_changes() -> void:
+	# Keep the visible content stable when new history lines are appended while the user is scrolled up.
+	var history := _get_history_lines_count()
+	var delta := int(history) - int(_last_history_lines_count)
+	if delta != 0 and int(_scroll_origin) < 0:
+		_scroll_origin = _clamp_scroll_origin(int(_scroll_origin) - int(delta))
+	elif history <= 0 and int(_scroll_origin) != 0:
+		_scroll_origin = 0
+	_last_history_lines_count = int(history)
+
+func _get_scroll_page_step() -> int:
+	var step := int(scroll_page_lines)
+	if step <= 0:
+		step = int(grid_rows)
+	return maxi(1, step)
+
+func _get_scroll_wheel_step(event: InputEventMouseButton) -> int:
+	var step := maxi(1, int(scroll_wheel_lines))
+	if event != null and bool(event.shift_pressed):
+		step *= 5
+	return step
+
+func _handle_scrollback_input(event: InputEvent) -> bool:
+	if not bool(enable_scrollback):
+		return false
+	if _text_buffer == null:
+		return false
+	if _get_history_lines_count() <= 0:
+		return false
+
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb == null or not bool(mb.pressed):
+			return false
+
+		var step := _get_scroll_wheel_step(mb)
+		if int(mb.button_index) == MOUSE_BUTTON_WHEEL_UP:
+			_scroll_origin = _clamp_scroll_origin(int(_scroll_origin) - step)
+			clear_selection()
+			_request_redraw()
+			accept_event()
+			return true
+		if int(mb.button_index) == MOUSE_BUTTON_WHEEL_DOWN:
+			_scroll_origin = _clamp_scroll_origin(int(_scroll_origin) + step)
+			clear_selection()
+			_request_redraw()
+			accept_event()
+			return true
+		return false
+
+	if event is InputEventKey:
+		var ke := event as InputEventKey
+		if ke == null or not bool(ke.pressed):
+			return false
+
+		var step2 := _get_scroll_page_step()
+		match int(ke.keycode):
+			KEY_PAGEUP:
+				_scroll_origin = _clamp_scroll_origin(int(_scroll_origin) - step2)
+				clear_selection()
+				_request_redraw()
+				accept_event()
+				return true
+			KEY_PAGEDOWN:
+				_scroll_origin = _clamp_scroll_origin(int(_scroll_origin) + step2)
+				clear_selection()
+				_request_redraw()
+				accept_event()
+				return true
+			KEY_HOME:
+				_scroll_origin = _clamp_scroll_origin(-_get_history_lines_count())
+				clear_selection()
+				_request_redraw()
+				accept_event()
+				return true
+			KEY_END:
+				_scroll_origin = 0
+				clear_selection()
+				_request_redraw()
+				accept_event()
+				return true
+			_:
+				return false
+
+	return false
 
 func _handle_mouse_event_for_selection(event: InputEvent) -> bool:
 	if _text_buffer == null:

@@ -27,8 +27,8 @@
         "https": "http://192.168.50.250:7897"
       },
       "files": {
-        "bios": "python/bbl64.bin",
-        "kernel": "python/kernel-riscv64.bin",
+        "bios": "python/fw_payload.bin",
+        "kernel": "python/dummy-kernel.bin",
         "rootfs": "python/root-py312-riscv64.bin"
       }
     }
