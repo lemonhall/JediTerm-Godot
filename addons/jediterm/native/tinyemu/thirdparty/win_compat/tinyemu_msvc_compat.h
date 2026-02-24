@@ -36,6 +36,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <windows.h>
+#include <stddef.h>
 
 #ifdef SEVERITY_WARNING
 #undef SEVERITY_WARNING
@@ -90,5 +91,12 @@ static int clock_gettime(int clk_id, struct timespec *ts) {
 	ts->tv_nsec = (long)((seconds - (double)ts->tv_sec) * 1000000000.0);
 	return 0;
 }
+
+// slirp/ socket.c uses iovec even on Windows builds.
+// Provide a minimal definition so MSVC can compile the SLIRP sources.
+struct iovec {
+	void *iov_base;
+	size_t iov_len;
+};
 
 #endif // _WIN32
