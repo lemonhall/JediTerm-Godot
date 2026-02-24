@@ -4,7 +4,6 @@ const StyleState := preload("res://addons/jediterm/terminal/model/style_state.gd
 const TerminalTextBuffer := preload("res://addons/jediterm/terminal/model/terminal_text_buffer.gd")
 const TerminalDisplay := preload("res://addons/jediterm/terminal/terminal_display.gd")
 const JediTerminal := preload("res://addons/jediterm/terminal/model/jedi_terminal.gd")
-const RomManager := preload("res://addons/jediterm/native/tinyemu/rom_manager.gd")
 
 const DEFAULT_TERMINAL_FONT_PATH := "res://addons/jediterm/render/fonts/MapleMono-CN-Regular.ttf"
 const DEFAULT_TERMINAL_FONT_ALT_PATH := "res://addons/jediterm/render/fonts/SarasaMonoSC-Regular.ttf"
@@ -178,9 +177,9 @@ func _try_start_tinyemu() -> void:
 	var err := ERR_UNAVAILABLE
 	# Prefer prebuilt disk image (rootfs) route. initrd from other workflows may exist but be incompatible with the selected kernel.
 	if has_rootfs and _vm.has_method("open_from_disk_images"):
-		err = int(_vm.open_from_disk_images(int(initial_cols), int(initial_rows), bios_os, kernel_os, rootfs_os, int(ram_size_mb)))
+		err = int(_vm.open_from_disk_images(int(initial_cols), int(initial_rows), bios_os, kernel_os, rootfs_os, int(ram_size_mb))) as Error
 	elif has_initrd and _vm.has_method("open_from_images"):
-		err = int(_vm.open_from_images(int(initial_cols), int(initial_rows), bios_os, kernel_os, initrd_os, int(ram_size_mb)))
+		err = int(_vm.open_from_images(int(initial_cols), int(initial_rows), bios_os, kernel_os, initrd_os, int(ram_size_mb))) as Error
 	else:
 		status.text = "TinyEmuVM: 缺少镜像文件（需要 root-riscv64.bin 或 initrd-riscv64.cpio）"
 		_vm = null
@@ -287,9 +286,9 @@ func _on_start_pressed() -> void:
 
 	var err := ERR_UNAVAILABLE
 	if rootfs_os != "" and FileAccess.file_exists(rootfs_os) and _vm.has_method("open_from_disk_images"):
-		err = int(_vm.open_from_disk_images(int(initial_cols), int(initial_rows), bios_os, kernel_os, rootfs_os, ram_mb))
+		err = int(_vm.open_from_disk_images(int(initial_cols), int(initial_rows), bios_os, kernel_os, rootfs_os, ram_mb)) as Error
 	elif initrd_os != "" and FileAccess.file_exists(initrd_os) and _vm.has_method("open_from_images"):
-		err = int(_vm.open_from_images(int(initial_cols), int(initial_rows), bios_os, kernel_os, initrd_os, ram_mb))
+		err = int(_vm.open_from_images(int(initial_cols), int(initial_rows), bios_os, kernel_os, initrd_os, ram_mb)) as Error
 	else:
 		status.text = "TinyEmuVM: 缺少镜像文件（需要 rootfs 或 initrd）"
 		_vm = null
