@@ -1,0 +1,41 @@
+# Minimal-ish defconfig for a TinyEMU-friendly riscv64 disk image with Python 3.12 + pip.
+#
+# NOTE: This is a starting point; adjust/tune as needed after first successful build.
+
+BR2_riscv=y
+BR2_RISCV_64=y
+
+BR2_TOOLCHAIN_BUILDROOT_GLIBC=y
+
+BR2_LINUX_KERNEL=y
+BR2_LINUX_KERNEL_USE_ARCH_DEFAULT_CONFIG=y
+BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES="board/jediterm-python/linux_min.config"
+
+# Console: virtio-console (hvc0)
+BR2_TARGET_GENERIC_GETTY=y
+BR2_TARGET_GENERIC_GETTY_PORT="hvc0"
+BR2_TARGET_GENERIC_GETTY_BAUDRATE="115200"
+BR2_TARGET_GENERIC_GETTY_TERM="linux"
+
+# Rootfs overlay: network + proxy + pip config.
+BR2_ROOTFS_OVERLAY="board/jediterm-python/overlay"
+
+# Disk image (ext2) for TinyEMU virtio-blk (/dev/vda).
+BR2_TARGET_ROOTFS_EXT2=y
+BR2_TARGET_ROOTFS_EXT2_SIZE="256M"
+
+# Userspace packages.
+BR2_PACKAGE_BASH=y
+BR2_PACKAGE_NANO=y
+BR2_PACKAGE_CURL=y
+
+BR2_PACKAGE_PYTHON3=y
+BR2_PACKAGE_PYTHON_PIP=y
+
+BR2_PACKAGE_OPENSSL=y
+BR2_PACKAGE_CA_CERTIFICATES=y
+BR2_PACKAGE_ZLIB=y
+BR2_PACKAGE_LIBFFI=y
+BR2_PACKAGE_READLINE=y
+BR2_PACKAGE_NCURSES=y
+

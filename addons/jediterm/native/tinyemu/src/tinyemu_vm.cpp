@@ -39,6 +39,10 @@ extern "C" {
 #include "machine.h"
 
 extern const VirtMachineClass riscv_machine_class;
+
+#ifdef CONFIG_SLIRP
+#include "slirp/libslirp.h"
+#endif
 }
 
 static char *dup_cstr(const char *s) {
@@ -82,6 +86,108 @@ static bool read_file_bytes(const godot::String &path, std::vector<uint8_t> &out
 	return true;
 }
 
+#ifdef CONFIG_SLIRP
+static void slirp_write_packet(EthernetDevice *net, const uint8_t *buf, int len) {
+	if (net == nullptr || buf == nullptr || len <= 0) {
+		return;
+	}
+	auto *slirp_state = static_cast<Slirp *>(net->opaque);
+	if (slirp_state == nullptr) {
+		return;
+	}
+	slirp_input(slirp_state, buf, len);
+}
+
+extern "C" int slirp_can_output(void *opaque) {
+	auto *net = static_cast<EthernetDevice *>(opaque);
+	if (net == nullptr || net->device_can_write_packet == nullptr) {
+		return 0;
+	}
+	return net->device_can_write_packet(net) ? 1 : 0;
+}
+
+extern "C" void slirp_output(void *opaque, const uint8_t *pkt, int pkt_len) {
+	auto *net = static_cast<EthernetDevice *>(opaque);
+	if (net == nullptr || net->device_write_packet == nullptr || pkt == nullptr || pkt_len <= 0) {
+		return;
+	}
+	net->device_write_packet(net, pkt, pkt_len);
+}
+
+#if defined(_WIN32)
+// Windows Winsock does not provide inet_aton().
+extern "C" int inet_aton(const char *cp, struct in_addr *ia) {
+	if (cp == nullptr || ia == nullptr) {
+		return 0;
+	}
+	return InetPtonA(AF_INET, cp, ia) == 1 ? 1 : 0;
+}
+#endif
+
+#if !defined(EMSCRIPTEN)
+static void slirp_select_fill1(EthernetDevice *net, int *pfd_max, fd_set *rfds, fd_set *wfds, fd_set *efds, int *pdelay) {
+	auto *slirp_state = static_cast<Slirp *>(net->opaque);
+	if (slirp_state == nullptr) {
+		return;
+	}
+	slirp_select_fill(slirp_state, pfd_max, rfds, wfds, efds);
+	(void)pdelay;
+}
+
+static void slirp_select_poll1(EthernetDevice *net, fd_set *rfds, fd_set *wfds, fd_set *efds, int select_ret) {
+	auto *slirp_state = static_cast<Slirp *>(net->opaque);
+	if (slirp_state == nullptr) {
+		return;
+	}
+	slirp_select_poll(slirp_state, rfds, wfds, efds, (select_ret <= 0));
+}
+#endif
+
+static EthernetDevice *slirp_open_local() {
+	auto *net = static_cast<EthernetDevice *>(mallocz(sizeof(EthernetDevice)));
+	if (net == nullptr) {
+		return nullptr;
+	}
+
+	struct in_addr net_addr;
+	struct in_addr mask;
+	struct in_addr host;
+	struct in_addr dhcp;
+	struct in_addr dns;
+	net_addr.s_addr = htonl(0x0a000200); // 10.0.2.0
+	mask.s_addr = htonl(0xffffff00); // 255.255.255.0
+	host.s_addr = htonl(0x0a000202); // 10.0.2.2
+	dhcp.s_addr = htonl(0x0a00020f); // 10.0.2.15
+	dns.s_addr = htonl(0x0a000203); // 10.0.2.3
+
+	const char *bootfile = nullptr;
+	const char *vhostname = nullptr;
+	const int restricted = 0;
+
+	Slirp *slirp_state = slirp_init(restricted, net_addr, mask, host, vhostname, "", bootfile, dhcp, dns, net);
+	if (slirp_state == nullptr) {
+		free(net);
+		return nullptr;
+	}
+
+	net->mac_addr[0] = 0x02;
+	net->mac_addr[1] = 0x00;
+	net->mac_addr[2] = 0x00;
+	net->mac_addr[3] = 0x00;
+	net->mac_addr[4] = 0x00;
+	net->mac_addr[5] = 0x01;
+
+	net->opaque = slirp_state;
+	net->write_packet = slirp_write_packet;
+#if !defined(EMSCRIPTEN)
+	net->select_fill = slirp_select_fill1;
+	net->select_poll = slirp_select_poll1;
+#endif
+
+	return net;
+}
+#endif // CONFIG_SLIRP
+
 void TinyEmuVM::_console_write_cb(void *opaque, const uint8_t *buf, int len) {
 	if (opaque == nullptr || buf == nullptr || len <= 0) {
 		return;
@@ -118,6 +224,9 @@ void TinyEmuVM::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_exec_cycles_per_tick", "cycles"), &TinyEmuVM::set_exec_cycles_per_tick);
 	ClassDB::bind_method(D_METHOD("resize_console", "cols", "rows"), &TinyEmuVM::resize_console);
 	ClassDB::bind_method(D_METHOD("get_vm_info"), &TinyEmuVM::get_vm_info);
+
+	ClassDB::bind_method(D_METHOD("set_network_enabled", "enabled"), &TinyEmuVM::set_network_enabled);
+	ClassDB::bind_method(D_METHOD("set_proxy_url", "url"), &TinyEmuVM::set_proxy_url);
 
 	// ConPTY-like aliases
 	ClassDB::bind_method(D_METHOD("open", "cols", "rows", "kernel_path", "rootfs_path", "ram_size_mb"), &TinyEmuVM::open, DEFVAL(128));
@@ -225,11 +334,27 @@ String TinyEmuVM::get_vm_info() const {
 	info += "cols=" + String::num_int64(_cols) + " rows=" + String::num_int64(_rows) + "\n";
 	info += "ram_mb=" + String::num_int64(_ram_mb) + "\n";
 	info += "exec_cycles_per_tick=" + String::num_int64(_exec_cycles_per_tick) + "\n";
+	info += "network_enabled=" + String(_network_enabled ? "true" : "false") + "\n";
+	info += "proxy_url=" + _proxy_url + "\n";
 	info += "bios_path=" + _bios_path + "\n";
 	info += "kernel_path=" + _kernel_path + "\n";
 	info += "initrd_path=" + _initrd_path + "\n";
 	info += "rootfs_path=" + _rootfs_path + "\n";
 	return info;
+}
+
+void TinyEmuVM::set_network_enabled(bool enabled) {
+	if (_running.load()) {
+		return;
+	}
+	_network_enabled = enabled;
+}
+
+void TinyEmuVM::set_proxy_url(const String &url) {
+	if (_running.load()) {
+		return;
+	}
+	_proxy_url = url;
 }
 
 int TinyEmuVM::open(int cols, int rows, const String &kernel_path, const String &rootfs_path, int ram_size_mb) {
@@ -443,12 +568,30 @@ void TinyEmuVM::_worker_main() {
 	console_dev.write_data = &TinyEmuVM::_console_write_cb;
 	console_dev.read_data = &TinyEmuVM::_console_read_cb;
 
+	EthernetDevice *net_dev = nullptr;
+	if (_network_enabled) {
+#ifdef CONFIG_SLIRP
+		net_dev = slirp_open_local();
+		if (net_dev == nullptr) {
+			const char *msg = "[TinyEmuVM] network enabled but slirp_open failed\r\n";
+			_out.push(reinterpret_cast<const uint8_t *>(msg), strlen(msg));
+		}
+#else
+		const char *msg = "[TinyEmuVM] network requested but CONFIG_SLIRP is disabled at build time\r\n";
+		_out.push(reinterpret_cast<const uint8_t *>(msg), strlen(msg));
+#endif
+	}
+
 	VirtMachineParams p = {};
 	p.vmc = &riscv_machine_class;
 	p.machine_name = dup_cstr("riscv64");
 	p.ram_size = static_cast<uint64_t>(_ram_mb) << 20;
 	p.rtc_real_time = true;
 	p.console = &console_dev;
+	if (net_dev != nullptr) {
+		p.eth_count = 1;
+		p.tab_eth[0].net = net_dev;
+	}
 	if (!_rootfs_path.is_empty()) {
 		p.cmdline = dup_cstr("console=hvc0 root=/dev/vda rw");
 	} else {
@@ -512,6 +655,10 @@ void TinyEmuVM::_worker_main() {
 	const char *msg = "[TinyEmuVM] VM started\r\n";
 	_out.push(reinterpret_cast<const uint8_t *>(msg), strlen(msg));
 
+	if (vm->net && vm->net->device_set_carrier) {
+		vm->net->device_set_carrier(vm->net, true);
+	}
+
 	std::vector<uint8_t> tmp_in;
 	tmp_in.resize(64 * 1024);
 
@@ -527,11 +674,21 @@ void TinyEmuVM::_worker_main() {
 			last_rows = rows;
 		}
 
-		int delay_ms = 10;
+		fd_set rfds;
+		fd_set wfds;
+		fd_set efds;
+		FD_ZERO(&rfds);
+		FD_ZERO(&wfds);
+		FD_ZERO(&efds);
+		int fd_max = -1;
+
+		int delay_ms = vm->vmc->virt_machine_get_sleep_duration(vm, 10);
+		if (delay_ms < 0) {
+			delay_ms = 0;
+		}
 
 		// Feed stdin to guest when virtio console queue is ready.
 		if (vm->console_dev && virtio_console_can_write_data(vm->console_dev)) {
-			delay_ms = 0;
 			const int write_len = virtio_console_get_write_len(vm->console_dev);
 			if (write_len > 0) {
 				const int want = write_len < static_cast<int>(tmp_in.size()) ? write_len : static_cast<int>(tmp_in.size());
@@ -542,15 +699,39 @@ void TinyEmuVM::_worker_main() {
 			}
 		}
 
-		vm->vmc->virt_machine_interp(vm, _exec_cycles_per_tick);
-
-		const int suggested = vm->vmc->virt_machine_get_sleep_duration(vm, delay_ms);
-		if (suggested > 0) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(suggested));
+		int select_ret = 0;
+		if (vm->net && vm->net->select_fill && vm->net->select_poll) {
+			vm->net->select_fill(vm->net, &fd_max, &rfds, &wfds, &efds, &delay_ms);
+			struct timeval tv;
+			tv.tv_sec = delay_ms / 1000;
+			tv.tv_usec = (delay_ms % 1000) * 1000;
+			if (fd_max >= 0) {
+				select_ret = select(fd_max + 1, &rfds, &wfds, &efds, &tv);
+			} else if (delay_ms > 0) {
+				std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
+			}
+			vm->net->select_poll(vm->net, &rfds, &wfds, &efds, select_ret);
+		} else if (delay_ms > 0) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
 		}
+
+		vm->vmc->virt_machine_interp(vm, _exec_cycles_per_tick);
 	}
 
 	vm->vmc->virt_machine_end(vm);
+
+	if (net_dev != nullptr) {
+#ifdef CONFIG_SLIRP
+		auto *slirp_state = static_cast<Slirp *>(net_dev->opaque);
+		if (slirp_state != nullptr) {
+			slirp_cleanup(slirp_state);
+			net_dev->opaque = nullptr;
+		}
+#endif
+		std::free(net_dev);
+		net_dev = nullptr;
+	}
+
 	if (mem_drive) {
 		delete mem_drive;
 		mem_drive = nullptr;

@@ -22,6 +22,8 @@
 
 ## 3. ROM Profile 机制
 
+状态：DONE（已实现 `rom_catalog.json` + `RomManager.gd`，demo 可下拉切换 profile）
+
 ### 3.1 rom_catalog.json
 
 位置：`addons/jediterm/native/tinyemu/images/rom_catalog.json`
@@ -109,6 +111,8 @@ static func resolve_paths(profile: Dictionary) -> Dictionary:
 ```
 
 ## 4. 联网架构（virtio-net + slirp）
+
+状态：DONE（已在 TinyEMU GDExtension 内启用 virtio-net + slirp；并在 `TinyEmuVM` 暴露网络开关/代理记录接口）
 
 ### 4.1 数据流
 
@@ -213,6 +217,8 @@ trusted-host = pypi.org
 | 分发总体积（压缩后） | ~35MB |
 
 ## 6. 构建脚本设计
+
+状态：DONE（已落地 `scripts/tinyemu/` 三阶段脚本 + WSL 配置/overlay）
 
 ### 6.1 脚本清单
 
@@ -379,6 +385,8 @@ echo "=== addons/jediterm/native/tinyemu/images/python/ 目录 ==="
 
 ## 7. UI 变更
 
+状态：DONE（demo 已加入 ROM 下拉框 + 代理输入框 + 启停按钮）
+
 在 demo 场景中新增：
 
 ```
@@ -421,7 +429,7 @@ ROM-B "Python"：
 
 这份 PRD 的实施依赖 PRD-0006 主体（TinyEMU GDExtension）完成。在此基础上：
 
-1. 先搞 rom_catalog.json + RomManager.gd + UI 切换（纯 GDScript，不涉及编译）
-2. 再搞 virtio-net + slirp 集成（C 层，GDExtension 改动）
+1. 先搞 rom_catalog.json + RomManager.gd + UI 切换（纯 GDScript，不涉及编译）— DONE
+2. 再搞 virtio-net + slirp 集成（C 层，GDExtension 改动）— DONE
 3. 最后跑 Buildroot 构建脚本，产出 ROM-B 镜像
 4. 端到端验收

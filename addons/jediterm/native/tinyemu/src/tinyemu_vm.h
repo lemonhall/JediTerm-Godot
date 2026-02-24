@@ -33,6 +33,10 @@ public:
 
 	String get_vm_info() const;
 
+	// PRD-0006A: networking toggles (call before create/open).
+	void set_network_enabled(bool enabled);
+	void set_proxy_url(const String &url);
+
 	// ConPTY-like convenience aliases (for TerminalControl integration)
 	int open(int cols, int rows, const String &kernel_path, const String &rootfs_path, int ram_size_mb = 128);
 	int open_from_images(int cols, int rows, const String &bios_path, const String &kernel_path, const String &initrd_path, int ram_size_mb = 128);
@@ -61,6 +65,9 @@ private:
 	int _rows = 24;
 	int _ram_mb = 128;
 	int _exec_cycles_per_tick = (1 << 20);
+
+	bool _network_enabled = false;
+	String _proxy_url;
 
 	String _kernel_path;
 	String _rootfs_path;

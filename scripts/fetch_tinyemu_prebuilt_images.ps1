@@ -1,6 +1,6 @@
 param(
   # Windows path. Defaults to repo-local output directory (ignored by git).
-  [string]$OutDir = "addons\\jediterm\\native\\tinyemu\\images\\out",
+  [string]$OutDir = "addons\\jediterm\\native\\tinyemu\\images\\prebuilt",
   # Optional HTTP proxy, e.g. http://127.0.0.1:7897
   [string]$Proxy = ""
 )
@@ -49,5 +49,5 @@ Copy-Item -Force (Join-Path $outDirFull "diskimage-linux-riscv-2018-09-23\\kerne
 Copy-Item -Force (Join-Path $outDirFull "diskimage-linux-riscv-2018-09-23\\root-riscv64.bin") (Join-Path $outDirFull "root-riscv64.bin")
 
 Write-Host "[OK] Images ready in: $outDirFull"
+Write-Host "[INFO] rom_catalog.json expects 'prebuilt/*' by default."
 Get-ChildItem $outDirFull | Sort-Object Name | Select-Object Name, Length | Format-Table -AutoSize
-

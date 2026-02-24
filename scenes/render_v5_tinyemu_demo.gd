@@ -4,6 +4,7 @@ const StyleState := preload("res://addons/jediterm/terminal/model/style_state.gd
 const TerminalTextBuffer := preload("res://addons/jediterm/terminal/model/terminal_text_buffer.gd")
 const TerminalDisplay := preload("res://addons/jediterm/terminal/terminal_display.gd")
 const JediTerminal := preload("res://addons/jediterm/terminal/model/jedi_terminal.gd")
+const RomManager := preload("res://addons/jediterm/native/tinyemu/rom_manager.gd")
 
 const DEFAULT_TERMINAL_FONT_PATH := "res://addons/jediterm/render/fonts/MapleMono-CN-Regular.ttf"
 const DEFAULT_TERMINAL_FONT_ALT_PATH := "res://addons/jediterm/render/fonts/SarasaMonoSC-Regular.ttf"
@@ -21,21 +22,25 @@ const DEFAULT_LATIN_MONO_FONT_PATH := "res://addons/jediterm/render/fonts/jet_br
 @onready var terminal_control: Control = $TerminalControl
 @onready var info: Label = $Info
 @onready var status: Label = $Status
+@onready var rom_select: OptionButton = $Controls/RomSelect
+@onready var proxy_label: Label = $Controls/ProxyLabel
+@onready var proxy_edit: LineEdit = $Controls/ProxyEdit
+@onready var start_button: Button = $Controls/Buttons/StartButton
+@onready var stop_button: Button = $Controls/Buttons/StopButton
 
 var _terminal: RefCounted = null
 var _buf: RefCounted = null
 var _vm = null
 var _font_label: String = ""
 var _font_px: int = 28
+var _rom_catalog: Dictionary = {}
 
 func _ready() -> void:
 	_setup_terminal()
-	_try_start_tinyemu()
+	_setup_controls()
 
 func _exit_tree() -> void:
-	if _vm != null and _vm.has_method("close"):
-		_vm.close()
-	_vm = null
+	_stop_vm()
 
 func _process(_delta: float) -> void:
 	if _vm != null and _vm.has_method("poll_data"):
@@ -87,6 +92,42 @@ func _setup_terminal() -> void:
 		_font_label = "JetBrainsMono"
 	if mono_font != null and terminal_control.has_method("set_terminal_font"):
 		terminal_control.set_terminal_font(mono_font, int(_font_px))
+
+func _setup_controls() -> void:
+	start_button.pressed.connect(_on_start_pressed)
+	stop_button.pressed.connect(_on_stop_pressed)
+	rom_select.item_selected.connect(_on_rom_selected)
+
+	proxy_label.visible = false
+	proxy_edit.visible = false
+
+	_rom_catalog = RomManager.load_catalog()
+	if _rom_catalog.is_empty():
+		status.text = "TinyEmuVM: rom_catalog.json 读取失败（检查 res://addons/jediterm/native/tinyemu/images/rom_catalog.json）"
+		return
+
+	var profiles: Array[Dictionary] = RomManager.list_profiles(_rom_catalog)
+	if profiles.is_empty():
+		status.text = "TinyEmuVM: rom_catalog.json profiles 为空"
+		return
+
+	rom_select.clear()
+	var default_id := String(_rom_catalog.get("default_profile", ""))
+	var default_index := 0
+	for i in range(profiles.size()):
+		var p := profiles[i]
+		var display := String(p.get("display_name", p.get("id", "")))
+		var pid := String(p.get("id", ""))
+		if pid == "":
+			continue
+		rom_select.add_item(display)
+		rom_select.set_item_metadata(rom_select.get_item_count() - 1, pid)
+		if pid == default_id:
+			default_index = rom_select.get_item_count() - 1
+
+	rom_select.select(default_index)
+	_apply_selected_profile_to_ui()
+	status.text = "TinyEmuVM: ready"
 
 func _try_start_tinyemu() -> void:
 	if not ClassDB.class_exists("TinyEmuVM"):
@@ -167,3 +208,108 @@ func _to_os_path(p: String) -> String:
 	if s.begins_with("res://") or s.begins_with("user://"):
 		return ProjectSettings.globalize_path(s)
 	return s
+
+func _apply_selected_profile_to_ui() -> void:
+	if _rom_catalog.is_empty():
+		proxy_label.visible = false
+		proxy_edit.visible = false
+		return
+	var pid := _get_selected_profile_id()
+	var profile := RomManager.get_profile(_rom_catalog, pid)
+	var net := bool(profile.get("network", false))
+	proxy_label.visible = net
+	proxy_edit.visible = net
+	if net:
+		var proxy_cfg: Dictionary = profile.get("proxy", {})
+		var default_proxy := String(proxy_cfg.get("http", "http://10.0.2.2:7897"))
+		if proxy_edit.text.strip_edges() == "":
+			proxy_edit.text = default_proxy
+	else:
+		proxy_edit.text = ""
+
+func _get_selected_profile_id() -> String:
+	if rom_select.get_item_count() <= 0:
+		return ""
+	var idx := int(rom_select.get_selected_id())
+	var md = rom_select.get_item_metadata(idx)
+	return String(md)
+
+func _on_rom_selected(_idx: int) -> void:
+	_apply_selected_profile_to_ui()
+
+func _on_start_pressed() -> void:
+	_stop_vm()
+	if _rom_catalog.is_empty():
+		_try_start_tinyemu()
+		return
+
+	var pid := _get_selected_profile_id()
+	var profile := RomManager.get_profile(_rom_catalog, pid)
+	if profile.is_empty():
+		status.text = "TinyEmuVM: profile not found: %s" % pid
+		return
+
+	var resolved := RomManager.resolve_paths(profile)
+	var files: Dictionary = resolved.get("files", {})
+	var bios_res := String(files.get("bios", ""))
+	var kernel_res := String(files.get("kernel", ""))
+	var rootfs_res := String(files.get("rootfs", ""))
+	var initrd_res := String(files.get("initrd", ""))
+
+	var bios_os := _to_os_path(bios_res)
+	var kernel_os := _to_os_path(kernel_res)
+	var rootfs_os := _to_os_path(rootfs_res)
+	var initrd_os := _to_os_path(initrd_res)
+
+	if bios_os == "" or not FileAccess.file_exists(bios_os):
+		status.text = "TinyEmuVM: BIOS not found: %s" % bios_res
+		return
+	if kernel_os == "" or not FileAccess.file_exists(kernel_os):
+		status.text = "TinyEmuVM: kernel not found: %s" % kernel_res
+		return
+
+	var ram_mb := int(profile.get("ram_mb", 128))
+	var net := bool(profile.get("network", false))
+	var proxy_url := proxy_edit.text.strip_edges()
+
+	if not ClassDB.class_exists("TinyEmuVM"):
+		status.text = "TinyEmuVM: 未启用扩展（Project Settings → GDExtension 添加 res://addons/jediterm/native/tinyemu/tinyemu.gdextension，并先本地构建 dll）"
+		return
+	_vm = ClassDB.instantiate("TinyEmuVM")
+	if _vm == null:
+		status.text = "TinyEmuVM: instantiate failed"
+		return
+
+	if _vm.has_method("set_network_enabled"):
+		_vm.set_network_enabled(net)
+	if _vm.has_method("set_proxy_url") and proxy_url != "":
+		_vm.set_proxy_url(proxy_url)
+
+	var err := ERR_UNAVAILABLE
+	if rootfs_os != "" and FileAccess.file_exists(rootfs_os) and _vm.has_method("open_from_disk_images"):
+		err = int(_vm.open_from_disk_images(int(initial_cols), int(initial_rows), bios_os, kernel_os, rootfs_os, ram_mb))
+	elif initrd_os != "" and FileAccess.file_exists(initrd_os) and _vm.has_method("open_from_images"):
+		err = int(_vm.open_from_images(int(initial_cols), int(initial_rows), bios_os, kernel_os, initrd_os, ram_mb))
+	else:
+		status.text = "TinyEmuVM: 缺少镜像文件（需要 rootfs 或 initrd）"
+		_vm = null
+		return
+
+	if err != OK:
+		status.text = "TinyEmuVM: open failed (%d)" % err
+		_vm = null
+		return
+
+	if terminal_control.has_method("set_terminal_output"):
+		terminal_control.set_terminal_output(_vm)
+	status.text = "TinyEmuVM: started (booting)"
+
+func _on_stop_pressed() -> void:
+	_stop_vm()
+
+func _stop_vm() -> void:
+	if _vm != null and _vm.has_method("close"):
+		_vm.close()
+	if terminal_control != null and terminal_control.has_method("set_terminal_output"):
+		terminal_control.set_terminal_output(null)
+	_vm = null

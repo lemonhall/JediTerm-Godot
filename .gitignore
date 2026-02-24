@@ -15,6 +15,10 @@ addons/jediterm/bin/
 addons/jediterm/native/tinyemu/build/
 addons/jediterm/native/tinyemu/src/build/
 addons/jediterm/native/tinyemu/images/out/
+addons/jediterm/native/tinyemu/images/prebuilt/*
+!addons/jediterm/native/tinyemu/images/prebuilt/.gitkeep
+addons/jediterm/native/tinyemu/images/python/*
+!addons/jediterm/native/tinyemu/images/python/.gitkeep
 
 # SCons signature databases (must not be committed)
 .sconsign.dblite

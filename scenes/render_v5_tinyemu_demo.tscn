@@ -38,3 +38,36 @@ script = ExtResource("2")
 terminal_font_size = 24
 grid_columns = 130
 grid_rows = 25
+
+[node name="Controls" type="VBoxContainer" parent="."]
+layout_mode = 0
+offset_left = 1320.0
+offset_top = 72.0
+offset_right = 1600.0
+offset_bottom = 712.0
+
+[node name="RomLabel" type="Label" parent="Controls"]
+layout_mode = 2
+text = "ROM 选择"
+
+[node name="RomSelect" type="OptionButton" parent="Controls"]
+layout_mode = 2
+
+[node name="ProxyLabel" type="Label" parent="Controls"]
+layout_mode = 2
+text = "代理地址"
+
+[node name="ProxyEdit" type="LineEdit" parent="Controls"]
+layout_mode = 2
+placeholder_text = "http://10.0.2.2:7897"
+
+[node name="Buttons" type="HBoxContainer" parent="Controls"]
+layout_mode = 2
+
+[node name="StartButton" type="Button" parent="Controls/Buttons"]
+layout_mode = 2
+text = "启动 VM"
+
+[node name="StopButton" type="Button" parent="Controls/Buttons"]
+layout_mode = 2
+text = "停止 VM"

@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "default_profile": "prebuilt_riscv64",
+  "profiles": [
+    {
+      "id": "prebuilt_riscv64",
+      "display_name": "Lite (预编译, ~25MB)",
+      "description": "Bellard 预编译 RISC-V 64 镜像，busybox shell，离线可用",
+      "ram_mb": 128,
+      "boot_mode": "disk",
+      "network": false,
+      "files": {
+        "bios": "prebuilt/bbl64.bin",
+        "kernel": "prebuilt/kernel-riscv64.bin",
+        "rootfs": "prebuilt/root-riscv64.bin"
+      }
+    },
+    {
+      "id": "buildroot_py312_riscv64",
+      "display_name": "Python 3.12 (~45MB)",
+      "description": "自编译镜像，Python 3.12 + pip，支持联网安装纯 Python 包",
+      "ram_mb": 256,
+      "boot_mode": "disk",
+      "network": true,
+      "proxy": {
+        "http": "http://192.168.50.250:7897",
+        "https": "http://192.168.50.250:7897"
+      },
+      "files": {
+        "bios": "python/bbl64.bin",
+        "kernel": "python/kernel-riscv64.bin",
+        "rootfs": "python/root-py312-riscv64.bin"
+      }
+    }
+  ]
+}
+

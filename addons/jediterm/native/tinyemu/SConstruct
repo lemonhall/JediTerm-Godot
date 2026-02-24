@@ -20,6 +20,8 @@ riscv_emu_src_dir = os.path.join("build", "riscv_emu")
 
 ext_env.Append(CPPPATH=[riscv_emu_dir, win_compat_dir])
 riscv_env.Append(CPPPATH=[riscv_emu_dir, win_compat_dir])
+ext_env.Append(CPPDEFINES=["CONFIG_SLIRP"])
+riscv_env.Append(CPPDEFINES=["CONFIG_SLIRP"])
 
 sources = Glob("src/*.cpp")
 
@@ -32,6 +34,23 @@ tinyemu_core_sources = [
 	os.path.join(riscv_emu_src_dir, "simplefb.c"),
 	os.path.join(riscv_emu_src_dir, "softfp.c"),
 	os.path.join(riscv_emu_src_dir, "riscv_machine.c"),
+	# SLIRP (user-mode NAT) for virtio-net.
+	os.path.join(riscv_emu_src_dir, "slirp", "bootp.c"),
+	os.path.join(riscv_emu_src_dir, "slirp", "cksum.c"),
+	os.path.join(riscv_emu_src_dir, "slirp", "if.c"),
+	os.path.join(riscv_emu_src_dir, "slirp", "ip_icmp.c"),
+	os.path.join(riscv_emu_src_dir, "slirp", "ip_input.c"),
+	os.path.join(riscv_emu_src_dir, "slirp", "ip_output.c"),
+	os.path.join(riscv_emu_src_dir, "slirp", "mbuf.c"),
+	os.path.join(riscv_emu_src_dir, "slirp", "misc.c"),
+	os.path.join(riscv_emu_src_dir, "slirp", "sbuf.c"),
+	os.path.join(riscv_emu_src_dir, "slirp", "slirp.c"),
+	os.path.join(riscv_emu_src_dir, "slirp", "socket.c"),
+	os.path.join(riscv_emu_src_dir, "slirp", "tcp_input.c"),
+	os.path.join(riscv_emu_src_dir, "slirp", "tcp_output.c"),
+	os.path.join(riscv_emu_src_dir, "slirp", "tcp_subr.c"),
+	os.path.join(riscv_emu_src_dir, "slirp", "tcp_timer.c"),
+	os.path.join(riscv_emu_src_dir, "slirp", "udp.c"),
 ]
 
 tinyemu_core_objects = [riscv_env.Object(source=s) for s in tinyemu_core_sources]
@@ -39,17 +58,17 @@ sources += tinyemu_core_objects
 
 if ext_env["platform"] == "windows":
 	# Keep consistent with godot-cpp CRT choice (/MD).
-	ext_env.Append(LIBS=["User32", "Advapi32", "Ole32", "Shell32"])
+	ext_env.Append(LIBS=["User32", "Advapi32", "Ole32", "Shell32", "Ws2_32", "Iphlpapi"])
 
 	# MSVC/Windows compatibility shims for upstream C sources (do NOT leak into godot-cpp build).
 	compat_header = os.path.abspath(os.path.join(win_compat_dir, "tinyemu_msvc_compat.h"))
 	riscv_env.Append(CCFLAGS=["/FI" + compat_header])
 	# Mirror upstream Makefile defaults for riscv64 builds.
-	riscv_env.Replace(CPPDEFINES=["MAX_XLEN=64", "CONFIG_RISCV_MAX_XLEN=64"])
+	riscv_env.Replace(CPPDEFINES=["MAX_XLEN=64", "CONFIG_RISCV_MAX_XLEN=64", "CONFIG_SLIRP"])
 
 	# riscv_cpu.c is compiled once per MAX_XLEN upstream (32/64/128). We only need 32+64.
 	riscv_env32 = riscv_env.Clone()
-	riscv_env32.Replace(CPPDEFINES=["MAX_XLEN=32", "CONFIG_RISCV_MAX_XLEN=64"])
+	riscv_env32.Replace(CPPDEFINES=["MAX_XLEN=32", "CONFIG_RISCV_MAX_XLEN=64", "CONFIG_SLIRP"])
 
 	riscv_cpu_src = os.path.join(riscv_emu_src_dir, "riscv_cpu.c")
 	riscv_cpu32_target = os.path.join("build", "riscv_emu", "build", "riscv_cpu32")
