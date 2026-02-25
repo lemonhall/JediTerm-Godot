@@ -3712,3 +3712,380 @@ python3 /tmp/tvec_fix.py
 ```bash
 grep -n 'mtvec\|stvec' riscv_cpu.c | head -20
 ```
+
+
+[TIMER_DBG] raise_exc: cause=0x80000009 deleg=1 priv=1 mip=0x00000a00 mie=0x000002a8 mideleg=0x00000222 tvec=0x803bb9cc jump=0x803bb9cc from_pc=0x801f412c insn=79359539
+[TIMER_DBG] set_mip: mask=0x00000080 mip=0x00000080 mie=0x000002a8 priv=1 pd=1 insn=79559025
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79559025
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79559202
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79559379
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79559556
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79559733
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79559910
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79560087
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79560264
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79560441
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79560618
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79560795
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79560972
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79561149
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79561326
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79561503
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79561680
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79561857
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79562034
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79562211
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79562388
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79562565
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79562742
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79562919
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79563096
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79563273
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000002a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x803b5aee insn=79563450
+
+
+非常关键的信息！
+
+- `tvec=0x800003c8` — OpenSBI 的 trap handler 入口（direct mode，低位是 0）
+- `from_pc=0x803b5aee` — 每次都从同一个地址 mret 回来
+- `priv=1` — 每次 raise 时都在 S-mode
+
+每次 trap 到 `0x800003c8`（M-mode），执行 177 条指令后 mret 回到 `0x803b5aee`（S-mode），然后立刻又 trap。`mie` 始终是 `0x2a8`，`mip` 始终是 `0x80`。OpenSBI 的 handler 完全没有处理 timer 中断。
+
+`0x803b5aee` 这个地址在 Linux 内核空间（`0x80000000+`），说明 mret 确实回到了 S-mode 的 WFI 指令处。
+
+`0x800003c8` 是 OpenSBI 的 trap vector。让我看看 OpenSBI 的 fw_jump.bin 里这个地址的代码。OpenSBI 通常加载在 `0x80000000`，trap vector 在 `0x80000000 + 偏移`。
+
+问题很可能是：**OpenSBI 的 trap handler 检查 `mcause`，发现是 timer 中断，但它期望通过 SBI 的 timer extension 来处理，而 timer extension 的初始化依赖于检测到 CLINT 设备**。如果 OpenSBI 没有正确识别 CLINT，timer handler 就是空的 — 直接 mret。
+
+让我看看 FDT 里 CLINT 节点的 compatible 字符串：
+
+```bash
+sed -n '675,695p' riscv_machine.c
+```
+
+同时看看 OpenSBI 期望什么 compatible：
+
+```bash
+find /mnt/e/development/JediTerm-Godot -name '*.bin' -path '*opensbi*' 2>/dev/null; find /mnt/e/development/JediTerm-Godot -name 'fw_jump*' 2>/dev/null
+```
+
+两个一起跑。
+
+
+找到了！看 `sbi_timer_process()`：
+
+```c
+csr_clear(CSR_MIE, MIP_MTIP);
+if (!sbi_hart_has_extension(..., SBI_HART_EXT_SSTC))
+    csr_set(CSR_MIP, MIP_STIP);
+```
+
+逻辑是对的 — 清除 MTIE，set STIP。但问题是 **这个函数根本没被调用**！从日志看 `mie` 始终是 `0x2a8`（MTIE=1），说明 `csr_clear(CSR_MIE, MIP_MTIP)` 从未执行。
+
+现在看调用链。`sbi_trap_handler` 走到 `sbi_trap_nonaia_irq`：
+
+```bash
+grep -A 30 'sbi_trap_nonaia_irq' ~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1/output/build/opensbi-1.6/lib/sbi/sbi_trap.c
+```
+
+这个函数负责根据 mcause 分发到 `sbi_timer_process()`。如果它没有正确分发，timer 中断就被忽略了。
+
+
+
+
+看到了！`TRAP_SAVE_AND_SETUP_SP_T0` 的开头部分在第 455 行之前：
+
+```bash
+sed -n '455,470p' ~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1/output/build/opensbi-1.6/firmware/fw_base.S
+```
+
+我需要看宏的最开头 — 它先用 `csrrw` 交换 `tp` 和 `mscratch`，然后用 `tp`（现在指向 scratch space）来设置栈。如果 TinyEMU 没有正确实现 `mscratch` 的 CSR 读写，这里就会出问题。
+
+
+找到关键线索了！看 `sbi_timer_process()`：
+
+```c
+void sbi_timer_process(void)
+{
+    csr_clear(CSR_MIE, MIP_MTIP);
+    if (!sbi_hart_has_extension(sbi_scratch_thishart_ptr(), SBI_HART_EXT_SSTC))
+        csr_set(CSR_MIP, MIP_STIP);
+}
+```
+
+如果 `sbi_hart_has_extension(SBI_HART_EXT_SSTC)` 返回 true，它就**不会**设 STIP！因为 SSTC 扩展意味着硬件有 `stimecmp` CSR，S-mode 可以直接收到 timer 中断，不需要 M-mode 转发。
+
+但 TinyEMU 根本不支持 SSTC 扩展！问题是 OpenSBI 怎么判断的。
+
+再看 `sbi_timer_event_start()`：
+
+```c
+if (sbi_hart_has_extension(sbi_scratch_thishart_ptr(), SBI_HART_EXT_SSTC)) {
+    csr_write(CSR_STIMECMP, next_event);  // 写一个 TinyEMU 不认识的 CSR！
+} else if (timer_dev && timer_dev->timer_event_start) {
+    timer_dev->timer_event_start(next_event);  // 正常路径：写 CLINT mtimecmp
+    csr_clear(CSR_MIP, MIP_STIP);
+}
+```
+
+如果 SSTC 被误判为存在，`timer_event_start` 会写 `stimecmp`（TinyEMU 不支持，可能静默忽略），而不是写 CLINT mtimecmp。这就解释了一切！
+
+确认一下 OpenSBI 怎么检测 SSTC：
+
+```bash
+grep -rn 'SBI_HART_EXT_SSTC' ~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1/output/build/opensbi-1.6/lib/sbi/sbi_hart.c | head -10
+```
+
+```bash
+grep -rn 'SSTC\|stimecmp\|henvcfg' ~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1/output/build/opensbi-1.6/lib/sbi/sbi_hart.c | head -20
+```
+
+
+是的，这就是问题所在。当时那些 CSR 报错，我们用返回 0 静默处理了（#17），但这恰恰可能让 OpenSBI 误判 TinyEMU 支持某些扩展。
+
+逻辑链：
+
+1. OpenSBI 尝试读 `stimecmp`（CSR 0x14D）来探测 SSTC 扩展
+2. TinyEMU 不认识这个 CSR，本应触发 illegal instruction 异常
+3. 但我们把未知 CSR 都改成返回 0 了
+4. OpenSBI 读到 0，没有异常 → 认为 SSTC 存在
+5. 于是 `sbi_timer_process()` 跳过了 `csr_set(CSR_MIP, MIP_STIP)`
+6. S-mode timer 中断永远不会到达内核
+
+先确认一下 OpenSBI 怎么检测 SSTC，以及我们到底 stub 了哪些 CSR：
+
+```bash
+grep -rn 'SSTC\|stimecmp\|0x14D\|0x14d' ~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1/output/build/opensbi-1.6/lib/sbi/sbi_hart.c | head -20
+```
+
+```bash
+grep -n 'case 0x14\|stimecmp\|menvcfg\|0x30a\|0x31a' riscv_cpu.c | head -20
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+好问题。让我逐个分析这批 CSR，哪些返回 0 是安全的，哪些是定时炸弹：
+
+**必须触发 illegal instruction（返回 0 会让 OpenSBI 误判支持某扩展）：**
+
+| CSR | 名称 | 隐患 |
+|-----|------|------|
+| `0x14d` | stimecmp | **根因！** OpenSBI 探测 SSTC 扩展，读成功 → 跳过 STIP 设置 |
+| `0x30a` | menvcfg | OpenSBI 用它启用 SSTC/SVPBMT 等扩展位，写 0 被吞掉 → 扩展配置丢失 |
+| `0x30c` | mstateen0 | 控制 S-mode 对某些状态的访问权限，返回 0 可能让 OpenSBI 误判 Smstateen 扩展 |
+| `0x7a0` | tselect | Debug/Trigger 模块选择器，OpenSBI 探测 trigger 数量，返回 0 → 认为有 trigger |
+| `0x7a1` | tdata1 | Debug/Trigger 数据寄存器，配合 tselect 探测 |
+| `0x7a4` | tinfo | Trigger info，返回 0 → OpenSBI 可能误判 trigger 类型 |
+| `0xda0` | scountovf | Sscofpmf 扩展（PMU 溢出），返回 0 → 误判支持 |
+
+**返回 0 是安全的（纯计数器/配置，不影响扩展探测）：**
+
+| CSR | 名称 | 安全原因 |
+|-----|------|----------|
+| `0xb03-0xb1f` | mhpmcounter3-31 | 硬件性能计数器，返回 0 = "没计数"，合理 |
+| `0x320` | mcountinhibit | 计数器抑制，返回 0 = "不抑制"，无害 |
+| `0x321` | mhpmevent3 | 计数器事件选择，返回 0 = "未配置"，无害 |
+| `0x3a0-0x3a2` | pmpcfg | PMP 配置，返回 0 = "无 PMP 规则"，合理 |
+| `0x3b0-0x3bf` | pmpaddr0-15 | PMP 地址，返回 0 = "无 PMP 规则"，合理 |
+| `0xfb0` | 自定义 vendor | 只读信息，返回 0 无害 |
+
+**修复方案：把那 7 个危险 CSR 从 stub 列表中移除，让它们走 default 分支触发 illegal instruction。** OpenSBI 的探测逻辑会 catch 这个异常，正确判断为"不支持"。
+
+要不要我直接给你 sed 命令把读和写两处都改掉？
+
+
+emmmmm：
+
+[    0.000000] Initmem setup node 0 [mem 0x0000000080000000-0x000000008fffffff]
+[    0.000000] Falling back to deprecated "riscv,isa"
+[    0.000000] riscv: base ISA extensions acdfim
+[    0.000000] riscv: ELF capabilities acdfim
+[    0.000000] pcpu-alloc: s0 r0 d32768 u32768 alloc=1*32768
+[    0.000000] pcpu-alloc: [0] 0 
+[    0.000000] Kernel command line: earlycon=sbi console=hvc0 root=/dev/vda rw loglevel=8 initcall_debug
+[    0.000000] Dentry cache hash table entries: 32768 (order: 6, 262144 bytes, linear)
+[    0.000000] Inode-cache hash table entries: 16384 (order: 5, 131072 bytes, linear)
+[    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 65536
+[    0.000000] mem auto-init: stack:all(zero), heap alloc:off, heap free:off
+[    0.000000] SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=1, Nodes=1
+[    0.000000] NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0
+[    0.000000] riscv-intc: 64 local interrupts mapped
+[    0.000000] clocksource: riscv_clocksource: mask: 0xffffffffffffffff max_cycles: 0x24e6a1710, max_idle_ns: 440795202120 ns
+[    0.000035] sched_clock: 64 bits at 10MHz, resolution 100ns, wraps every 4398046511100ns
+[    0.001769] riscv-timer: DEBUG: after sched_clock_register
+[    0.003013] riscv-timer: DEBUG: after request_percpu_irq
+[    0.004147] riscv-timer: DEBUG: before cpuhp_setup_state
+[    0.005326] riscv-timer: DEBUG: timer_starting_cpu: after stop
+[    0.006534] riscv-timer: DEBUG: timer_starting_cpu: before clockevents_register
+[    0.008050] riscv-timer: DEBUG: timer_starting_cpu: after clockevents_register
+[    0.009416] riscv-timer: DEBUG: timer_starting_cpu: before enable_percpu_irq
+[    0.011095] DEBUG: after time_init
+
+直接卡在这里了。。。
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13060882
+[TIMER_DBG] mcause_read: val=0x8000000000000007 priv=3 pc=0x800003c8 mepc=0xffffffff80055980
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13061063
+[TIMER_DBG] mcause_read: val=0x8000000000000007 priv=3 pc=0x800003c8 mepc=0xffffffff80055980
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13061240
+[TIMER_DBG] mcause_read: val=0x8000000000000007 priv=3 pc=0x800003c8 mepc=0xffffffff80055980
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13061417
+[TIMER_DBG] mcause_read: val=0x8000000000000007 priv=3 pc=0x800003c8 mepc=0xffffffff80055980
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13061594
+[TIMER_DBG] mcause_read: val=0x8000000000000007 priv=3 pc=0x800003c8 mepc=0xffffffff80055980
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13061771
+[TIMER_DBG] mcause_read: val=0x8000000000000007 priv=3 pc=0x800003c8 mepc=0xffffffff80055980
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13061948
+[TIMER_DBG] mcause_read: val=0x8000000000000007 priv=3 pc=0x800003c8 mepc=0xffffffff80055980
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13062125
+[TIMER_DBG] mcause_read: val=0x8000000000000007 priv=3 pc=0x800003c8 mepc=0xffffffff80055980
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13062302
+[TIMER_DBG] mcause_read: val=0x8000000000000007 priv=3 pc=0x800003c8 mepc=0xffffffff80055980
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13062479
+[TIMER_DBG] mcause_read: val=0x8000000000000007 priv=3 pc=0x800003c8 mepc=0xffffffff80055980
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13062656
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13062833
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13063010
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13063187
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13063364
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13063541
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13063718
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13063895
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13064072
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13064249
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13064426
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13064603
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13064780
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13064957
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13065134
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13065311
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13065488
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13065665
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13065842
+[TIMER_DBG] raise_exc: cause=0x80000007 deleg=0 priv=1 mip=0x00000080 mie=0x000000a8 mideleg=0x00000222 tvec=0x800003c8 jump=0x800003c8 from_pc=0x80055980 insn=13066019
+
+这是godot的输出
+
+
+
+破案了！看这个链条：
+
+```c
+/* Detect if hart supports Priv v1.12 */
+__check_priv(CSR_MENVCFG,
+             SBI_HART_PRIV_VER_1_11, SBI_HART_PRIV_VER_1_12);
+```
+
+`CSR_MENVCFG` 就是 `0x30a` — 我们刚把它从 stub 里删了，现在读它会触发 illegal instruction。那 priv_version 就不会升到 1.12，好的。
+
+但再往上看：
+
+```c
+/* Detect if hart supports Priv v1.11 */
+__check_priv(CSR_MCOUNTINHIBIT,
+             SBI_HART_PRIV_VER_1_10, SBI_HART_PRIV_VER_1_11);
+```
+
+`CSR_MCOUNTINHIBIT` 是 `0x320` — 这个还在我们的 stub 列表里，返回 0！所以 OpenSBI 认为 priv_version = 1.11。
+
+然后 `__check_ext_csr` 的逻辑：
+
+```c
+if (hfeatures->priv_version >= __base_priv) {
+    csr_read_allowed(__csr, &trap);
+    if (!trap.cause)
+        __sbi_hart_update_extension(hfeatures, __ext, true);
+}
+```
+
+SSTC 的 `__base_priv` 是 `SBI_HART_PRIV_VER_1_12`。如果 priv_version 只到 1.11，那 `hfeatures->priv_version >= SBI_HART_PRIV_VER_1_12` 为 false，**根本不会去读 stimecmp**，直接跳过，SSTC 不会被标记为支持。
+
+所以理论上现在应该没问题了... 除非 `menvcfg`（0x30a）删掉后导致了别的问题。
+
+等等，你说还是中断风暴？让我再仔细看日志 — `mie=0x0a8` = MSIE(3) + STIE(5) + MTIE(7)。STIE 被设了，这说明内核确实在期待 S-mode timer 中断。但 `mip` 始终只有 `0x80`（MTIP），没有 STIP。
+
+关键问题：**你重编 DLL 后有没有把新 DLL 复制到 Godot 的 bin 目录？** 确认一下：
+
+```bash
+ls -la /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/build/Release/*.dll 2>/dev/null; ls -la /mnt/e/development/JediTerm-Godot/addons/jediterm/bin/win64/tinyemu*.dll 2>/dev/null
+```
+
+```bash
+stat --format='%Y %n' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/build/Release/*.dll /mnt/e/development/JediTerm-Godot/addons/jediterm/bin/win64/tinyemu*.dll 2>/dev/null
+```
+
+
+
+破案了！！！
+
+`CSR_MTOPI = 0xfb0` — 我们标注成了 "vendor"，但它其实是 SMAIA（AIA 高级中断架构）的探测 CSR！
+
+而且它的 `__base_priv` 是 `SBI_HART_PRIV_VER_UNKNOWN`，不受版本限制，无条件探测。我们返回 0，没有 trap → OpenSBI 认为 SMAIA 存在！
+
+然后在 `sbi_trap_handler` 里：
+
+```c
+if (sbi_hart_has_extension(..., SBI_HART_EXT_SMAIA))
+    rc = sbi_trap_aia_irq();    // ← 走了这条路！
+else
+    rc = sbi_trap_nonaia_irq(); // ← 正确路径，永远没走到
+```
+
+AIA 路径处理 timer 中断的方式完全不同，在没有真正 AIA 硬件的情况下当然不会正确设 STIP。
+
+**这才是真正的根因！** 不是 SSTC，是 SMAIA！
+
+`0xfb0` 必须从 stub 里删掉：
+
+```bash
+cd /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu
+
+# 看当前读路径
+sed -n '853,860p' riscv_cpu.c
+```
+
+
+
+[    7.311940]     HOME=/
+[    7.313329]     TERM=linux
+seedrng: can't determine pool size, assuming 256 bits: No such file or directory
+Saving 256 bits of non-creditable seed for next boot
+Starting syslogd: OK
+Starting klogd: OK
+Running sysctl: OK
+Starting network: udhcpc: started, v1.37.0
+udhcpc: broadcasting discover
+udhcpc: no lease, forking to background
+OK
+[   20.069031] virtio_net virtio1 eth0: NETDEV WATCHDOG: CPU: 0: transmit queue 0 timed out 5320 ms
+[   20.072011] virtio_net virtio1 eth0: TX timeout on queue: 0, sq: output.0, vq: 0x1, name: output.0, 5320000 usecs ago
+Starting crond: OK
+
+Welcome to Buildroot
+(none) login: [   25.188914] virtio_net virtio1 eth0: NETDEV WATCHDOG: CPU: 0: transmit queue 0 timed out 10440 ms
+[   25.191939] virtio_net virtio1 eth0: TX timeout on queue: 0, sq: output.0, vq: 0x1, name: output.0, 10440000 usecs ago
+[   30.052861] virtio_net virtio1 eth0: NETDEV WATCHDOG: CPU: 0: transmit queue 0 timed out 15304 ms
+[   30.055886] virtio_net virtio1 eth0: TX timeout on queue: 0, sq: output.0, vq: 0x1, name: output.0, 15304000 usecs ago
+[   35.172964] virtio_net virtio1 eth0: NETDEV WATCHDOG: CPU: 0: transmit queue 0 timed out 20424 ms
+[   35.175988] virtio_net virtio1 eth0: TX timeout on queue: 0, sq: output.0, vq: 0x1, name: output.0, 20424000 usecs ago
+[   40.036984] virtio_net virtio1 eth0: NETDEV WATCHDOG: CPU: 0: transmit queue 0 timed out 25288 ms
+[   40.040009] virtio_net virtio1 eth0: TX timeout on queue: 0, sq: output.0, vq: 0x1, name: output.0, 25288000 usecs ago
+
+我操，牛逼。。。连login都出来了。。。。
+
+但是。。。，哎。。。很奇怪，我输入了root之后，回车，虚拟机就和归零了一样，重新启动了一次，BIOS+内核又刷了一遍！
