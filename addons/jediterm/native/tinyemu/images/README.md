@@ -4089,3 +4089,102 @@ Welcome to Buildroot
 我操，牛逼。。。连login都出来了。。。。
 
 但是。。。，哎。。。很奇怪，我输入了root之后，回车，虚拟机就和归零了一样，重新启动了一次，BIOS+内核又刷了一遍！
+
+
+
+
+输入路径看起来没问题：Godot → `write_console` → `_in` 队列 → `_console_read_cb` → `virtio_console_write_data` → guest。
+
+"输入 root 回车后重启"更可能是 guest 内部的问题。想想看：
+
+1. 你输入 `root\r`
+2. login 进程验证通过，fork+exec `/bin/sh`
+3. shell 启动，可能触发了某个之前没走到的代码路径
+
+有几个可能：
+- shell 启动时读 `/etc/profile` 触发了某个操作导致 crash
+- 更可能的是：**内核 panic 后自动 reboot** — Linux 默认 `panic=0` 会挂住，但如果配了 `panic=N` 就会 N 秒后重启
+
+看看内核配置里有没有 panic reboot：
+
+```bash
+grep -i 'panic\|reboot\|restart' ~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1/output/build/linux-6.12.20/.config | head -15
+```
+
+另外，也可能不是 panic 而是某种 illegal instruction trap 导致 OpenSBI 调用了 `sbi_system_reset`。看看 C++ 层有没有捕获到什么：
+
+```bash
+sed -n '650,680p' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/src/tinyemu_vm.cpp
+```
+
+
+看到了！`inittab` 里有关键线索：
+
+```
+::respawn:-/sbin/getty -L hvc0 115200 vt100
+::ctrlaltdel:/sbin/reboot
+```
+
+`getty` 在 `hvc0` 上运行，这没问题。但注意 busybox 是**动态链接**的（`dynamically linked, interpreter /lib/ld-linux-riscv64-lp64d.so.1`）。
+
+login 成功后 fork+exec `/bin/sh`（也是 busybox），动态链接器需要加载 glibc。如果 glibc 里用了 TinyEMU 不支持的指令，就会 crash。
+
+不过更直接的排查方式 — 看看 glibc 的 march：
+
+```bash
+file ~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1/output/target/lib/ld-linux-riscv64-lp64d.so.1
+```
+
+```bash
+# 看看 glibc 编译时的 march
+strings ~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1/output/target/lib/libc.so.6 | grep -i 'gcc\|march\|rv64' | head -10
+```
+
+```bash
+# 也看看有没有 Zicsr 之类的扩展标记
+readelf -A ~/.cache/jediterm_tinyemu_buildroot/buildroot-2025.02.1/output/target/lib/libc.so.6 2>/dev/null | head -20
+```
+
+
+C++ 层的 tick 循环很干净 — 只有 `_stop_requested` 才会退出，没有任何重启逻辑。所以"重启"一定是 guest 内部发生的。
+
+最可能的场景：login 后 shell 启动 → 触发某种异常 → 内核 panic → OpenSBI 收到 SBI reset ecall → OpenSBI 跳回 `0x80000000` 重新执行 → 看起来像"重启"。
+
+加个诊断，在 HTIF 和 SBI ecall 处捕获 reset/shutdown：
+
+```bash
+sed -n '136,141p' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_machine.c
+```
+
+```bash
+# 看看 ecall 处理 — OpenSBI 的 system reset 最终会写 HTIF tohost
+# 但如果 OpenSBI 直接做 warm reset（跳回入口），HTIF 不会被触发
+# 看看 raise_exception 里有没有 reset 相关
+grep -n 'raise_exception\|CAUSE_\|mcause\|reset' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_cpu.c | head -20
+```
+
+
+
+
+非常清晰了！整个启动序列：
+
+1. `exc #0`: `cause=0x03` (breakpoint) M-mode — OpenSBI 正常启动
+2. `exc #1-4`: `cause=0x02` (illegal instruction) M-mode — 读 CSR 0x30a/0xda0/0xfb0/0x7a0，OpenSBI 探测硬件特性，正常
+3. `exc #5`: **`cause=0x0c` (instruction page fault) `pc=0x80201048` priv=1** — 这是关键！
+4. `exc #6+`: `cause=0x09` (ecall from S-mode) 疯狂重复 — 内核在反复调用 SBI
+
+`exc #5` 是问题的根源。`cause=0x0c`（instruction page fault），`pc=0x80201048`，priv=1（S-mode）。
+
+这意味着：OpenSBI 把控制权交给内核后，内核开启了 MMU（S-mode 页表），然后某个时刻 PC 跳到了 `0x80201048` — 这是一个**物理地址**，不是虚拟地址。在 MMU 开启的情况下，这个地址没有映射，所以触发 page fault。
+
+`0x80201048` 很可能是内核的物理入口附近（OpenSBI 在 `0x80000000`，内核通常在 `0x80200000`）。这看起来像是 **内核 panic 后调用了 SBI system_reset，OpenSBI 跳回了内核的物理入口**。
+
+但等等 — 这只发生了一次（`exc #5`），之后全是 `cause=0x09`。所以不是反复重启，而是内核在 page fault handler 里反复调用 SBI。
+
+关键问题是：**为什么 `cause=0x09` 的 tval 是 `0x80201048`？**
+
+对于 ecall，RISC-V 规范说 tval 应该是 0 或者实现定义的值。TinyEMU 在 ecall 时把什么写进了 tval？
+
+```bash
+grep -n 'CAUSE_SUPERVISOR_ECALL\|CAUSE_USER_ECALL\|case 0x09\|ecall' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_cpu.c | head -20
+```

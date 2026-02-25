@@ -21,7 +21,7 @@
       "description": "自编译镜像，Python 3.12 + pip，支持联网安装纯 Python 包",
       "ram_mb": 256,
       "boot_mode": "disk",
-      "network": true,
+      "network": false,
       "proxy": {
         "http": "http://192.168.50.250:7897",
         "https": "http://192.168.50.250:7897"

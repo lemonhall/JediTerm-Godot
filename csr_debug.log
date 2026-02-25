@@ -1,5 +1,10 @@
 csr_read: invalid CSR=0x30a
 csr_read: invalid CSR=0xda0
+csr_read: invalid CSR=0xfb0
+csr_read: invalid CSR=0x7a0
+csr_read: invalid CSR=0x30a
+csr_read: invalid CSR=0xda0
+csr_read: invalid CSR=0xfb0
 csr_read: invalid CSR=0x7a0
 csr_read: invalid CSR=0x30a
 csr_read: invalid CSR=0xda0
