@@ -695,6 +695,7 @@ void TinyEmuVM::_worker_main() {
 				const int want = write_len < static_cast<int>(tmp_in.size()) ? write_len : static_cast<int>(tmp_in.size());
 				const int got = _console_read_cb(this, tmp_in.data(), want);
 				if (got > 0) {
+					fprintf(stderr, "[LOOP] console_write_data got=%d delay_ms=%d\n", got, delay_ms);
 					virtio_console_write_data(vm->console_dev, tmp_in.data(), got);
 				}
 			}
@@ -709,10 +710,12 @@ void TinyEmuVM::_worker_main() {
 			if (fd_max >= 0) {
 				select_ret = select(fd_max + 1, &rfds, &wfds, &efds, &tv);
 			} else if (delay_ms > 0) {
+				fprintf(stderr, "[LOOP] sleeping %d ms\n", delay_ms);
 				std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
 			}
 			vm->net->select_poll(vm->net, &rfds, &wfds, &efds, select_ret);
 		} else if (delay_ms > 0) {
+			fprintf(stderr, "[LOOP] sleeping %d ms\n", delay_ms);
 			std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
 		}
 
