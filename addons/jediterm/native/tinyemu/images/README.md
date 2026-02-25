@@ -4188,3 +4188,99 @@ grep -n 'raise_exception\|CAUSE_\|mcause\|reset' /mnt/e/development/JediTerm-God
 ```bash
 grep -n 'CAUSE_SUPERVISOR_ECALL\|CAUSE_USER_ECALL\|case 0x09\|ecall' /mnt/e/development/JediTerm-Godot/addons/jediterm/native/tinyemu/thirdparty/riscv-emu/riscv_cpu.c | head -20
 ```
+
+
+
+好，三个文件，我一个一个说。
+
+## 1. virtio.h
+
+在 `#endif /* VIRTIO_H */` 前加：
+
+```c
+/* virtio rng device */
+VIRTIODevice *virtio_rng_init(VIRTIOBusDef *bus);
+```
+
+## 2. virtio.c
+
+在文件末尾（最后一个函数之后）加：
+
+```c
+/*********************************************************************/
+/* virtio rng device */
+
+typedef struct {
+    VIRTIODevice common;
+} VIRTIORNGDevice;
+
+static void virtio_rng_recv_request(VIRTIODevice *s, int queue_idx,
+                                    int desc_idx, int read_size,
+                                    int write_size)
+{
+    QueueState *qs = &s->queue[queue_idx];
+    uint8_t buf[256];
+    int len, copy_len;
+
+    if (queue_idx != 0 || write_size == 0)
+        return;
+
+    len = write_size;
+    while (len > 0) {
+        copy_len = len;
+        if (copy_len > (int)sizeof(buf))
+            copy_len = sizeof(buf);
+        /* fill with pseudo-random bytes */
+        for (int i = 0; i < copy_len; i++)
+            buf[i] = (uint8_t)(rand() & 0xff);
+        memcpy_to_queue(s, queue_idx, desc_idx, write_size - len, buf, copy_len);
+        len -= copy_len;
+    }
+
+    virtio_consume_desc(s, queue_idx, desc_idx, write_size);
+}
+
+VIRTIODevice *virtio_rng_init(VIRTIOBusDef *bus)
+{
+    VIRTIORNGDevice *s = mallocz(sizeof(*s));
+    virtio_init(&s->common, bus,
+                4,    /* device_id: 4 = entropy source */
+                0,    /* config_space_size */
+                virtio_rng_recv_request);
+    virtio_set_queue_num(&s->common, 0, 8);
+    return (VIRTIODevice *)s;
+}
+```
+
+## 3. riscv_machine.c
+
+找到 `/* virtio net device */` 那行（大约 969 行），在它前面加：
+
+```c
+    /* virtio rng device */
+    {
+        vbus->irq = &s->plic_irq[irq_num];
+        virtio_rng_init(vbus);
+        vbus->addr += VIRTIO_SIZE;
+        irq_num++;
+        s->virtio_count++;
+    }
+```
+
+就这三处。改完后先编译 DLL，确认无报错，然后启动测试。
+
+
+好，hwrng 能读出随机数据，熵也喂进去了，nano 还是卡。说明根因不是熵不足。
+
+我们之前的假设错了。得回到事实清单 #72 的方案，直接看 nano 到底卡在哪个系统调用上：
+
+```
+nano --version &
+sleep 1
+cat /proc/$!/syscall
+cat /proc/$!/wchan
+cat /proc/$!/status | head -5
+kill $!
+```
+
+这次能拿到真正的阻塞点。
