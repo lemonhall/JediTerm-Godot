@@ -1,46 +1,61 @@
-# TinyEMU GDExtension (WIP)
+# TinyEMU GDExtension
 
-本目录提供 `TinyEmuVM` 原生类（GDExtension / C++），目标是在 Godot 进程内运行 TinyEMU，并通过 VirtIO Console 暴露一个“真实 Linux shell”的字节流后端。
+在 Godot 进程内运行 TinyEMU RISC-V 模拟器（rv64imafdc），通过 VirtIO Console 提供 Linux shell 字节流后端。
 
-当前状态：仅提供可编译的骨架（线程 + SPSC 环形缓冲 + `poll_data()/write()` 管道）；TinyEMU 核心集成与镜像启动尚未接入。
+## 当前状态
 
-## 目录约定
+已完整可用：
+- Linux 5.15.180 内核 + Python 3.12 rootfs 正常启动
+- VirtIO Console（HTIF → HVC）输入输出正常
+- VirtIO Block（ext2 rootfs）读写正常
+- VirtIO Net（slirp 用户态网络栈）可联网
+- nano、curl、python3 等用户态程序均正常运行
 
-- 源码：`addons/jediterm/native/tinyemu/src/`
-- `.gdextension`：`addons/jediterm/native/tinyemu/tinyemu.gdextension`
-- 第三方：`addons/jediterm/native/tinyemu/thirdparty/`
-- 输出（本地构建产物，不提交）：`addons/jediterm/bin/`
+## 目录结构
 
-## 来源与许可证（第三方）
-
-- TinyEMU 核心实现来自 git submodule：`addons/jediterm/native/tinyemu/thirdparty/riscv-emu/`
-- 上游仓库：`https://github.com/sysprog21/riscv-emu`
-- 许可证：MIT（以 submodule 内 `LICENSE` 为准）
+```
+tinyemu/
+├── src/                    # C++ GDExtension 包装层
+│   ├── tinyemu_vm.cpp      # TinyEmuVM 类实现（线程、SPSC 缓冲、slirp 桥接）
+│   └── tinyemu_vm.h
+├── thirdparty/riscv-emu/   # TinyEMU C 核心（git submodule）
+├── images/                 # ROM 镜像与构建文档
+│   ├── prebuilt/           # Bellard 原版镜像（Lite profile）
+│   ├── python/             # 自编译 Linux 5.15 + Python 3.12 镜像
+│   └── rom_catalog.json    # 镜像配置清单
+└── tinyemu.gdextension     # GDExtension 描述文件
+```
 
 ## 构建（Windows 11 + PowerShell）
 
 前置：
 - Visual Studio Build Tools（MSVC + Windows SDK）
 - Python + SCons：`python -m pip install --user -U scons`
-- `godot-cpp`（与 Godot 4.6 匹配），路径复用：`addons/jediterm/native/thirdparty/godot-cpp/`
-
-命令：
+- `godot-cpp`（与 Godot 4.6 匹配），路径：`addons/jediterm/native/thirdparty/godot-cpp/`
 
 ```powershell
 pwsh -NoProfile -File scripts\build_tinyemu_gdextension.ps1
 ```
 
-构建成功后生成（不提交）：
+产物（不提交）：
 - `addons/jediterm/bin/win64/tinyemu.windows.template_debug.x86_64.dll`
 - `addons/jediterm/bin/win64/tinyemu.windows.template_release.x86_64.dll`
 
-## 在项目中启用
-
-在 Godot 编辑器：`Project Settings` → `GDExtension`，添加：
-- `res://addons/jediterm/native/tinyemu/tinyemu.gdextension`
-
-启用后可用：
+## 在 GDScript 中使用
 
 ```gdscript
 var vm = ClassDB.instantiate("TinyEmuVM")
 ```
+
+## MSVC 注意事项
+
+slirp 网络栈的 packed struct 在 MSVC 下需要特殊处理：
+- `__attribute__((packed))` 被 MSVC 忽略，需用 `#pragma pack(push, 1)`
+- `u_int` 位域在 MSVC 下始终分配 4 字节（即使只用 8 bit），需改为 `uint8_t`
+- 涉及文件：`slirp/ip.h`、`slirp/tcp.h`、`slirp/slirp.c`
+
+## 来源与许可证
+
+- TinyEMU 核心：git submodule `thirdparty/riscv-emu/`（MIT）
+- 上游：[bellard.org/tinyemu](https://bellard.org/tinyemu/)
+- SLIRP：2-clause BSD

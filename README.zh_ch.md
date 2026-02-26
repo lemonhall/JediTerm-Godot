@@ -2,7 +2,7 @@
 
 [English README](README.md)
 
-面向 Godot 4.6 的终端仿真器项目，核心用纯 GDScript 实现；终端仿真逻辑从 JediTerm（Java）移植而来。在 Windows 上可选通过 ConPTY（GDExtension）接入真实 PTY。
+面向 Godot 4.6 的终端仿真器项目，核心用纯 GDScript 实现；终端仿真逻辑从 JediTerm（Java）移植而来。三种后端可选：Windows ConPTY（GDExtension）、SSH WebSocket 中转、内嵌 RISC-V Linux 虚拟机（TinyEMU GDExtension）。
 
 ## 截图
 
@@ -15,6 +15,7 @@
 - Web 版已打通（Web 导出 + WS SSH bridge），可稳定连接远程机器。
 - 浏览器内 IME 已可用（通过 HTML/JS IME patch 规避 Godot Web canvas 的输入法限制）。
 - Demo UI 已提供 FPS 显示；本地测试 FPS 稳定 50+，并做过 24h 压测（`top` 观察）保持稳定。
+- TinyEMU（RISC-V 模拟器）已完整集成：可启动 Linux 5.15 + Python 3.12，支持 slirp 联网。全部在进程内运行，无外部依赖。
 
 ## Web Demo（WS SSH bridge）
 
@@ -48,6 +49,7 @@ pwsh -NoProfile -File scripts\export_web_with_ime.ps1
 
 - 核心实现：`addons/jediterm/`
 - Windows ConPTY（GDExtension）：`addons/jediterm/native/` + `addons/jediterm/native/conpty.gdextension`
+- TinyEMU RISC-V 虚拟机（GDExtension）：`addons/jediterm/native/tinyemu/` + ROM 镜像在 `addons/jediterm/native/tinyemu/images/`
 - WS SSH bridge（Python）：`ssh-bridge/`
 - 测试运行脚本（Windows/PowerShell）：`scripts/run_godot_tests.ps1`
 - Headless 测试：`tests/**/test_*.gd`

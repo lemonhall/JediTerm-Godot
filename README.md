@@ -2,7 +2,7 @@
 
 [中文说明](README.zh_ch.md)
 
-Terminal emulator for Godot 4.6, implemented in pure GDScript. The emulation core is ported from JediTerm (Java). Windows PTY integration is provided via an optional ConPTY GDExtension.
+Terminal emulator for Godot 4.6, implemented in pure GDScript. The emulation core is ported from JediTerm (Java). Three backend options: Windows ConPTY (GDExtension), SSH via WebSocket bridge, and an embedded RISC-V Linux VM (TinyEMU GDExtension).
 
 ## Screenshots
 
@@ -15,6 +15,7 @@ Terminal emulator for Godot 4.6, implemented in pure GDScript. The emulation cor
 - Web build is working end-to-end (Web export + WS SSH bridge) and can connect to a remote machine.
 - IME works in the browser via an HTML/JS IME patch (for Godot Web canvas input limitations).
 - FPS overlay is available in the demo UI; local tests show 50+ FPS, and a 24h stress run (checked via `top`) is stable.
+- TinyEMU (RISC-V emulator) is fully integrated: boots Linux 5.15 with Python 3.12, networking via slirp. Runs entirely in-process, no external dependencies.
 
 ## Web Demo (WS SSH bridge)
 
@@ -48,6 +49,7 @@ pwsh -NoProfile -File scripts\export_web_with_ime.ps1
 
 - Core implementation: `addons/jediterm/`
 - Windows ConPTY (GDExtension): `addons/jediterm/native/` + `addons/jediterm/native/conpty.gdextension`
+- TinyEMU RISC-V VM (GDExtension): `addons/jediterm/native/tinyemu/` + ROM images in `addons/jediterm/native/tinyemu/images/`
 - WS SSH bridge (Python): `ssh-bridge/`
 - Test runner (Windows/PowerShell): `scripts/run_godot_tests.ps1`
 - Headless tests: `tests/**/test_*.gd`
