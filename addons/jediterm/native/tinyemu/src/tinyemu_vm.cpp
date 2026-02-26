@@ -95,22 +95,30 @@ static void slirp_write_packet(EthernetDevice *net, const uint8_t *buf, int len)
 	if (slirp_state == nullptr) {
 		return;
 	}
+	fprintf(stderr, "[NET-TX] guest->slirp len=%d\n", len);
 	slirp_input(slirp_state, buf, len);
 }
 
 extern "C" int slirp_can_output(void *opaque) {
 	auto *net = static_cast<EthernetDevice *>(opaque);
 	if (net == nullptr || net->device_can_write_packet == nullptr) {
+		fprintf(stderr, "[NET-CAN] nullptr, ret=0\n");
 		return 0;
 	}
-	return net->device_can_write_packet(net) ? 1 : 0;
+	int ret = net->device_can_write_packet(net) ? 1 : 0;
+	if (ret == 0) {
+		fprintf(stderr, "[NET-CAN] ret=0 (RX queue not ready)\n");
+	}
+	return ret;
 }
 
 extern "C" void slirp_output(void *opaque, const uint8_t *pkt, int pkt_len) {
 	auto *net = static_cast<EthernetDevice *>(opaque);
 	if (net == nullptr || net->device_write_packet == nullptr || pkt == nullptr || pkt_len <= 0) {
+		fprintf(stderr, "[NET-RX] slirp->guest DROPPED (null) len=%d\n", pkt_len);
 		return;
 	}
+	fprintf(stderr, "[NET-RX] slirp->guest len=%d\n", pkt_len);
 	net->device_write_packet(net, pkt, pkt_len);
 }
 
@@ -712,6 +720,10 @@ void TinyEmuVM::_worker_main() {
 			} else if (delay_ms > 0) {
 				fprintf(stderr, "[LOOP] sleeping %d ms\n", delay_ms);
 				std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
+			}
+			static int poll_log_count = 0;
+			if ((++poll_log_count % 500) == 1 && fd_max >= 0) {
+				fprintf(stderr, "[LOOP] net poll #%d fd_max=%d select_ret=%d\n", poll_log_count, fd_max, select_ret);
 			}
 			vm->net->select_poll(vm->net, &rfds, &wfds, &efds, select_ret);
 		} else if (delay_ms > 0) {
