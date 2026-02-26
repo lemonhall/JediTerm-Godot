@@ -18,17 +18,17 @@
     {
       "id": "buildroot_py312_riscv64",
       "display_name": "Python 3.12 (~45MB)",
-      "description": "自编译镜像，Python 3.12 + pip，支持联网安装纯 Python 包",
+      "description": "自编译镜像，Python 3.12 + pip，Linux 5.15 内核，支持联网",
       "ram_mb": 256,
       "boot_mode": "disk",
-      "network": false,
+      "network": true,
       "proxy": {
         "http": "http://192.168.50.250:7897",
         "https": "http://192.168.50.250:7897"
       },
       "files": {
-        "bios": "python/fw_payload.bin",
-        "kernel": "python/dummy-kernel.bin",
+        "bios": "prebuilt/bbl64.bin",
+        "kernel": "python/kernel-5.15-riscv64.bin",
         "rootfs": "python/root-py312-riscv64.bin"
       }
     }

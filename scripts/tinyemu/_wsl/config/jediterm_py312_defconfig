@@ -1,13 +1,20 @@
 # Minimal-ish defconfig for a TinyEMU-friendly riscv64 disk image with Python 3.12 + pip.
 #
 # NOTE: This is a starting point; adjust/tune as needed after first successful build.
+# IMPORTANT: Linux 6.12 hangs with TinyEMU on file-backed I/O. Use 5.15 LTS instead.
 
 BR2_riscv=y
 BR2_RISCV_64=y
 
 BR2_TOOLCHAIN_BUILDROOT_GLIBC=y
 
+# Use 6.12 kernel headers for toolchain (glibc on riscv64 needs headers >= 5.0),
+# but build the actual kernel at 5.15 LTS to avoid TinyEMU compatibility issues.
+BR2_KERNEL_HEADERS_6_12=y
+
 BR2_LINUX_KERNEL=y
+BR2_LINUX_KERNEL_CUSTOM_VERSION=y
+BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE="5.15.180"
 BR2_LINUX_KERNEL_USE_ARCH_DEFAULT_CONFIG=y
 BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES="board/jediterm-python/linux_min.config"
 

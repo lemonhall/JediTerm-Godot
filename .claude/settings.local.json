@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:bellard.org)",
+      "WebSearch",
+      "Bash(/c/Windows/System32/wsl.exe bash:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(gh search:*)",
+      "Bash(curl:*)",
+      "WebFetch(domain:cateee.net)",
+      "Bash(MSYS_NO_PATHCONV=1 /c/Windows/System32/wsl.exe bash:*)"
+    ]
+  }
+}
