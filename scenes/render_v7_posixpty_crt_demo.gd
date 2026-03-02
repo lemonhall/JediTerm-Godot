@@ -65,9 +65,8 @@ func _setup_terminal() -> void:
 
 	terminal_control.focus_mode = Control.FOCUS_ALL
 	terminal_control.grab_focus()
-	if terminal_control.has_method("set"):
-		terminal_control.set("grid_columns", cols)
-		terminal_control.set("grid_rows", rows)
+
+	terminal_control.custom_minimum_size = Vector2(cols * terminal_control.cell_width, rows * terminal_control.cell_height)
 	if terminal_control.has_method("set"):
 		terminal_control.set("auto_resize_terminal", true)
 
@@ -116,3 +115,4 @@ func _on_pty_data_received(_data: PackedByteArray) -> void:
 
 func _on_pty_process_exited(exit_code: int) -> void:
 	status.text = "PosixPTY: process exited (%d)" % int(exit_code)
+

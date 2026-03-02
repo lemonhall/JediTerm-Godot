@@ -6,20 +6,17 @@ const CrtShader := preload("res://addons/jediterm/render/crt_effect.gdshader")
 @export var transparent_bg: bool = false
 @export var render_update_mode: int = SubViewport.UPDATE_ALWAYS
 
-@export var curvature: float = 0.03
-@export var scanline_strength: float = 0.18
-@export var vignette_strength: float = 0.18
-@export var noise_strength: float = 0.02
-@export var glow_strength: float = 0.16
-@export var brightness: float = 1.25
-@export var contrast: float = 1.08
+@export var curvature: float = 0.09
+@export var scanline_strength: float = 0.28
+@export var vignette_strength: float = 0.38
+@export var noise_strength: float = 0.03
+@export var glow_strength: float = 0.22
+@export var brightness: float = 1.10
+@export var contrast: float = 1.10
 @export var gamma: float = 1.00
 @export var monochrome: bool = true
 @export var phosphor_tint: Color = Color(0.18, 1.0, 0.18, 1.0)
 @export var flicker_strength: float = 0.03
-
-@export var safe_area_scale: float = 0.94
-@export var safe_area_padding_px: int = 0
 
 var _viewport: SubViewport = null
 var _terminal_control: Control = null
@@ -83,16 +80,8 @@ func _sync_sizes() -> void:
 	if _viewport.size != new_size:
 		_viewport.size = new_size
 	if _terminal_control != null:
-		var scale := clampf(float(safe_area_scale), 0.5, 1.0)
-		var pad := maxi(0, int(safe_area_padding_px))
-		var safe_w := maxi(1, int(floor(float(new_size.x) * scale)) - pad * 2)
-		var safe_h := maxi(1, int(floor(float(new_size.y) * scale)) - pad * 2)
-		var safe_size := Vector2(float(safe_w), float(safe_h))
-		_terminal_control.size = safe_size
-		_terminal_control.position = Vector2(
-			float(new_size.x) * 0.5 - safe_size.x * 0.5,
-			float(new_size.y) * 0.5 - safe_size.y * 0.5
-		)
+		_terminal_control.position = Vector2.ZERO
+		_terminal_control.size = Vector2(float(new_size.x), float(new_size.y))
 
 func get_terminal_control() -> Control:
 	_ensure_built()
@@ -101,3 +90,4 @@ func get_terminal_control() -> Control:
 func get_viewport() -> SubViewport:
 	_ensure_built()
 	return _viewport
+

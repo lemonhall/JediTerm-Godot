@@ -173,12 +173,6 @@ int PosixPTY::resize(int cols, int rows) {
 	ws.ws_xpixel = 0;
 	ws.ws_ypixel = 0;
 	int rc = ::ioctl(_master_fd, TIOCSWINSZ, &ws);
-	// Notify the child process that the window size changed, otherwise shells
-	// may keep using stale COLUMNS/LINES and line wrapping will look wrong.
-	int pid = _child_pid.load();
-	if (pid > 0) {
-		::kill(pid, SIGWINCH);
-	}
 	return (rc == 0) ? OK : ERR_CANT_CREATE;
 #endif
 }

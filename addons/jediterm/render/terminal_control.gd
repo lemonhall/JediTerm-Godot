@@ -66,7 +66,6 @@ var _ime_last_position: Vector2i = Vector2i(-9999, -9999)
 
 func _init() -> void:
 	focus_mode = Control.FOCUS_ALL
-	clip_contents = true
 
 func _ready() -> void:
 	if auto_cell_metrics:
