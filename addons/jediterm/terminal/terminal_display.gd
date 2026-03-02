@@ -1,11 +1,9 @@
 extends RefCounted
 
-"""
-Upstream `TerminalDisplay` is an interface used by the terminal model.
-
-In this repo it also acts as a minimal concrete implementation so that OSC
-queries (e.g. OSC 10/11 "?") don't crash when demos use `TerminalDisplay.new()`.
-"""
+# Upstream `TerminalDisplay` is an interface used by the terminal model.
+#
+# In this repo it also acts as a minimal concrete implementation so that OSC
+# queries (e.g. OSC 10/11 "?") don't crash when demos use `TerminalDisplay.new()`.
 
 var _window_title: String = ""
 var _window_foreground := {"r": 0, "g": 0, "b": 0}
