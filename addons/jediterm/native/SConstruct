@@ -10,15 +10,27 @@ env["OBJPREFIX"] = os.path.join("build", "")
 
 sources = Glob("src/*.cpp")
 
+# Keep library names consistent across platforms (no "lib" prefix).
+env["SHLIBPREFIX"] = ""
+
 if env["platform"] == "windows":
 	# Match godot-cpp's CRT choice (/MD); don't force /MT here.
 	env.Append(LIBS=["User32", "Advapi32", "Ole32", "Shell32"])
-else:
-	env.Append(CPPDEFINES=["_CONPTY_DISABLED"])
+elif env["platform"] == "linux":
+	# forkpty(3) is in libutil on many distros.
+	env.Append(LIBS=["util"])
 
-library = env.SharedLibrary(
-	"../bin/win64/conpty{}{}".format(env["suffix"], env["SHLIBSUFFIX"]),
-	source=sources,
-)
+out_dir = "../bin/win64"
+if env["platform"] == "macos":
+	out_dir = "../bin/macos"
+elif env["platform"] == "linux":
+	out_dir = "../bin/linux"
+
+# Godot's .gdextension keys for macOS don't include arch. Use stable filenames without arch there.
+out_name = "conpty{}{}".format(env["suffix"], env["SHLIBSUFFIX"])
+if env["platform"] == "macos":
+	out_name = "conpty.macos.{}{}".format(env["target"], env["SHLIBSUFFIX"])
+
+library = env.SharedLibrary(os.path.join(out_dir, out_name), source=sources)
 
 Default(library)

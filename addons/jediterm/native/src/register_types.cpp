@@ -1,6 +1,7 @@
 #include "register_types.h"
 
 #include "conpty.h"
+#include "posix_pty.h"
 
 #include <gdextension_interface.h>
 #include <godot_cpp/core/defs.hpp>
@@ -9,14 +10,19 @@
 using namespace godot;
 
 void initialize_jediterm_conpty_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE || ClassDB::class_exists("ConPTY")) {
+	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}
-	ClassDB::register_class<ConPTY>();
+	if (!ClassDB::class_exists("ConPTY")) {
+		ClassDB::register_class<ConPTY>();
+	}
+	if (!ClassDB::class_exists("PosixPTY")) {
+		ClassDB::register_class<PosixPTY>();
+	}
 }
 
 void uninitialize_jediterm_conpty_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE || !ClassDB::class_exists("ConPTY")) {
+	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}
 }
@@ -33,4 +39,3 @@ jediterm_conpty_library_init(GDExtensionInterfaceGetProcAddress p_get_proc_addre
 	return init_obj.init();
 }
 }
-

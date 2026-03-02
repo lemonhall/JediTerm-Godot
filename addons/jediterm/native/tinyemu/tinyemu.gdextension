@@ -13,3 +13,24 @@ windows.template_release.x86_64 = "res://addons/jediterm/bin/win64/tinyemu.windo
 
 windows.debug.x86_64 = "res://addons/jediterm/bin/win64/tinyemu.windows.template_debug.x86_64.dll"
 windows.release.x86_64 = "res://addons/jediterm/bin/win64/tinyemu.windows.template_debug.x86_64.dll"
+
+# macOS/Linux: disabled stub (maps to conpty dylib/so that exports a no-op
+# `jediterm_tinyemu_library_init` to avoid startup errors when enabled).
+macos.debug = "res://addons/jediterm/bin/macos/conpty.macos.template_debug.dylib"
+macos.release = "res://addons/jediterm/bin/macos/conpty.macos.template_release.dylib"
+macos.editor = "res://addons/jediterm/bin/macos/conpty.macos.template_debug.dylib"
+macos.template_debug = "res://addons/jediterm/bin/macos/conpty.macos.template_debug.dylib"
+macos.template_release = "res://addons/jediterm/bin/macos/conpty.macos.template_release.dylib"
+macos.x86_64 = "res://addons/jediterm/bin/macos/conpty.macos.template_debug.dylib"
+macos.editor.x86_64 = "res://addons/jediterm/bin/macos/conpty.macos.template_debug.dylib"
+macos.template_debug.x86_64 = "res://addons/jediterm/bin/macos/conpty.macos.template_debug.dylib"
+macos.template_release.x86_64 = "res://addons/jediterm/bin/macos/conpty.macos.template_release.dylib"
+macos.debug.x86_64 = "res://addons/jediterm/bin/macos/conpty.macos.template_debug.dylib"
+macos.release.x86_64 = "res://addons/jediterm/bin/macos/conpty.macos.template_release.dylib"
+
+linux.debug.x86_64 = "res://addons/jediterm/bin/linux/conpty.linux.template_debug.x86_64.so"
+linux.release.x86_64 = "res://addons/jediterm/bin/linux/conpty.linux.template_release.x86_64.so"
+linux.template_debug.x86_64 = "res://addons/jediterm/bin/linux/conpty.linux.template_debug.x86_64.so"
+linux.template_release.x86_64 = "res://addons/jediterm/bin/linux/conpty.linux.template_release.x86_64.so"
+linux.x86_64 = "res://addons/jediterm/bin/linux/conpty.linux.template_debug.x86_64.so"
+linux.editor.x86_64 = "res://addons/jediterm/bin/linux/conpty.linux.template_debug.x86_64.so"

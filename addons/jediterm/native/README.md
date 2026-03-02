@@ -1,6 +1,11 @@
 # Windows ConPTY GDExtension
 
-本目录提供 `ConPTY` 原生类（GDExtension / C++），用于在 Windows 10 1809+（Win11 OK）上用 ConPTY 启动真实 shell，并把输出字节流回传到 GDScript。
+本目录提供原生 PTY 类（GDExtension / C++）：
+
+- Windows：`ConPTY`（Windows 10 1809+ / Win11 OK）
+- macOS / Linux：`PosixPTY`（基于 `forkpty`）
+
+用于启动真实 shell，并把输出字节流回传到 GDScript。
 
 ## 目录约定
 
@@ -69,3 +74,9 @@ var pty = ClassDB.instantiate("ConPTY")
 ```
 
 来创建实例（推荐用 `ClassDB.instantiate`，避免脚本在未启用扩展时加载失败）。
+
+非 Windows 平台请使用：
+
+```gdscript
+var pty = ClassDB.instantiate("PosixPTY")
+```

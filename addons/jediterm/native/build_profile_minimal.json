@@ -1,0 +1,9 @@
+{
+  "enabled_classes": [
+    "RefCounted",
+    "Object",
+    "OS",
+    "Wrapped",
+    "EditorPluginRegistration"
+  ]
+}

@@ -11,5 +11,6 @@ config_version=5
 [application]
 
 config/name="JediTerm-Godot"
-run/main_scene="res://scenes/render_v5_tinyemu_demo.tscn"
+run/main_scene="res://scenes/render_v7_posixpty_crt_demo.tscn"
 config/features=PackedStringArray("4.6")
+config/icon="res://assets/icons/jediterm_terminal_icon.png"

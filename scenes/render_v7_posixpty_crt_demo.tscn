@@ -1,0 +1,43 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/render_v7_posixpty_crt_demo.gd" id="1"]
+[ext_resource type="Script" path="res://addons/jediterm/render/crt_terminal_container.gd" id="2"]
+
+[node name="RenderV7PosixPTYCrtDemo" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Info" type="Label" parent="."]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 10.0
+offset_right = 1600.0
+offset_bottom = 34.0
+text = "Render v7 PosixPTY CRT demo"
+
+[node name="Status" type="Label" parent="."]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 38.0
+offset_right = 1600.0
+offset_bottom = 62.0
+
+[node name="CrtTerminal" type="SubViewportContainer" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+offset_left = 16.0
+offset_top = 72.0
+offset_right = -16.0
+offset_bottom = -16.0
+script = ExtResource("2")
+curvature = 0.04
+
