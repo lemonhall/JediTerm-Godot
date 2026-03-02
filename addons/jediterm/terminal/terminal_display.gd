@@ -67,8 +67,5 @@ func set_window_background_rgb(r: int, g: int, b: int) -> void:
 func get_window_background_rgb() -> Dictionary:
 	return Dictionary(_window_background)
 
-func set_cursor_shape(cursor_shape: int) -> void:
-	setCursorShape(cursor_shape)
-
 func get_cursor_shape() -> int:
 	return int(_cursor_shape)
