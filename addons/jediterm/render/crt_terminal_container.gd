@@ -7,18 +7,18 @@ const CrtShader := preload("res://addons/jediterm/render/crt_effect.gdshader")
 @export var render_update_mode: int = SubViewport.UPDATE_ALWAYS
 
 @export var curvature: float = 0.03
-@export var scanline_strength: float = 0.10
-@export var vignette_strength: float = 0.08
+@export var scanline_strength: float = 0.18
+@export var vignette_strength: float = 0.18
 @export var noise_strength: float = 0.02
-@export var glow_strength: float = 0.08
-@export var brightness: float = 1.55
-@export var contrast: float = 1.05
+@export var glow_strength: float = 0.16
+@export var brightness: float = 1.25
+@export var contrast: float = 1.08
 @export var gamma: float = 1.00
 @export var monochrome: bool = true
 @export var phosphor_tint: Color = Color(0.18, 1.0, 0.18, 1.0)
-@export var flicker_strength: float = 0.01
+@export var flicker_strength: float = 0.03
 
-@export var safe_area_scale: float = 0.90
+@export var safe_area_scale: float = 0.94
 @export var safe_area_padding_px: int = 0
 
 var _viewport: SubViewport = null
@@ -93,8 +93,6 @@ func _sync_sizes() -> void:
 			float(new_size.x) * 0.5 - safe_size.x * 0.5,
 			float(new_size.y) * 0.5 - safe_size.y * 0.5
 		)
-		if _terminal_control.has_method("apply_resize_now"):
-			_terminal_control.apply_resize_now()
 
 func get_terminal_control() -> Control:
 	_ensure_built()

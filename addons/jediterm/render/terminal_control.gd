@@ -68,9 +68,6 @@ func _init() -> void:
 	focus_mode = Control.FOCUS_ALL
 	clip_contents = true
 
-func apply_resize_now() -> void:
-	_apply_resize_to_terminal_and_output()
-
 func _ready() -> void:
 	if auto_cell_metrics:
 		_update_cell_metrics()

@@ -38,11 +38,6 @@ vec3 _apply_monochrome(vec3 rgb) {
 	return luma * phosphor_tint;
 }
 
-vec3 _tex_rgb_clamped(vec2 uv) {
-	vec2 cuv = clamp(uv, vec2(0.0), vec2(1.0));
-	return texture(TEXTURE, cuv).rgb;
-}
-
 void fragment() {
 	vec2 uv = _warp_uv(UV);
 	bool oob = (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0);
@@ -54,17 +49,13 @@ void fragment() {
 		// Glow: tiny blur (4 taps) mixed in.
 		vec2 px = TEXTURE_PIXEL_SIZE;
 		vec3 blur = vec3(0.0);
-		blur += _tex_rgb_clamped(uv + vec2(px.x, 0.0));
-		blur += _tex_rgb_clamped(uv + vec2(-px.x, 0.0));
-		blur += _tex_rgb_clamped(uv + vec2(0.0, px.y));
-		blur += _tex_rgb_clamped(uv + vec2(0.0, -px.y));
+		blur += texture(TEXTURE, uv + vec2(px.x, 0.0)).rgb;
+		blur += texture(TEXTURE, uv + vec2(-px.x, 0.0)).rgb;
+		blur += texture(TEXTURE, uv + vec2(0.0, px.y)).rgb;
+		blur += texture(TEXTURE, uv + vec2(0.0, -px.y)).rgb;
 		blur *= 0.25;
 		blur = _apply_monochrome(blur);
-
-		// Avoid bright "bands" near the edges from glow sampling/clamping.
-		float edge_min = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
-		float edge_fade = smoothstep(0.0, 0.02, edge_min);
-		col = mix(col, blur, glow_strength * edge_fade);
+		col = mix(col, blur, glow_strength);
 
 		// Scanlines (based on source texture vertical resolution).
 		float tex_h = 1.0 / max(px.y, 1e-6);
